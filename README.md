@@ -65,6 +65,15 @@ Establish a **repeatable, auditable, and ethical MLOps framework** to detect and
 
 ---
 
+## 🧩 Data Access & Ethical Credentialing
+This project uses **MIMIC-IV v2.2** under PhysioNet’s *Credentialed Health Data License*.  
+All analyses were performed by a credentialed researcher in compliance with the **CITI Program – Biomedical (Biomed) Foundations** certification *(Valid: Jun 2025 – Jun 2026)*.  
+
+For dataset details and access requirements, visit  
+🔗 [PhysioNet MIMIC-IV Project Page](https://physionet.org/content/mimiciv/2.2/)
+
+---
+
 ## 📂 Repository Structure
 
 ```plaintext
