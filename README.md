@@ -85,7 +85,6 @@ clinical-driftops-platform/
 │ └─ kpi_dashboard_links.md
 ├─ LICENSE
 └─ README.md
-
 ---
 
 ## 🚀 Quickstart
