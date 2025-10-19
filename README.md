@@ -2,7 +2,7 @@
 <h3 align="center"><i>PMI-CPMAI™-Aligned MLOps for Safe, Explainable Clinical AI</i></h3>
 
 <p align="center">
-  <img src="assets/driftOps_pic_h.png" alt="Clinical DriftOps Overview" width="400"/>
+  <img src="assets/driftOps_pic_h.png" alt="Clinical DriftOps Overview" width="600"/>
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 ---
 
 ## 🧠 Objective
-Establish a **repeatable, auditable, and ethical MLOps framework** to detect and mitigate **data drift, model drift, and bias** across clinical AI use cases (e.g., sepsis risk, readmission, medication adherence) while preserving **trust, transparency, and regulatory compliance**.
+Establish a **repeatable, auditable, and ethical MLOps framework** to detect and mitigate **data drift, model drift, & bias** across clinical AI use cases (e.g., sepsis risk, readmission, medication adherence) while preserving **trust, transparency, & regulatory compliance**.
 
 ---
 
@@ -66,3 +66,67 @@ Establish a **repeatable, auditable, and ethical MLOps framework** to detect and
 ---
 
 ## 📂 Repository Structure
+clinical-driftops-platform/
+├─ assets/
+│ └─ driftOps_pic_h.png # banner image
+├─ data/ # sample or synthetic schemas
+├─ notebooks/ # EDA · drift baseline · bias analysis
+├─ src/
+│ ├─ data_prep.py # PII-safe transforms + lineage
+│ ├─ driftops_service.py # APIs for drift / bias / explain
+│ ├─ monitors/ # PSI · KS · latency · error monitors
+│ └─ explain/ # SHAP + Permutation Importance
+├─ ops/
+│ ├─ ci/ # GitHub Actions / CI workflows
+│ ├─ mlflow/ # experiment registry config
+│ └─ policy/ # Policy-as-Code sentinels
+├─ reports/
+│ ├─ trustworthy_ai_audit_v1.md # Phase V artifact
+│ └─ kpi_dashboard_links.md
+├─ LICENSE
+└─ README.md
+
+---
+
+## 🚀 Quickstart
+
+```bash
+# Clone
+git clone https://github.com/sobcza11/clinical-driftops-platform.git
+cd clinical-driftops-platform
+
+# (Optional) create venv
+python -m venv .venv
+.venv\Scripts\activate   # Windows
+# source .venv/bin/activate   # macOS/Linux
+
+# Install
+pip install -r requirements.txt
+
+# Run baseline drift check
+python -m src.monitors.run_baseline --config configs/baseline.yaml
+
+# Launch MLflow UI
+mlflow ui
+
+
+🧮 Explainability & Fairness
+
+SHAP (tree/kernel) for local + global attribution
+
+Permutation Importance as model-agnostic backup
+
+Fairness Slices across age, gender, race + bias remediation playbook
+
+🧭 Roadmap
+
+Current: Phase II – Data Understanding (phase-ii-data-understanding)
+
+Next: Streamlit / Grafana dashboards for live drift monitoring
+
+Planned: GenAI Compliance Sentinel for RAG-based FDA/HIPAA/EU AI Act diff alerts
+
+👤 Credits
+
+Rand Sobczak Jr., PMI-CPMAI™
+Project Lead · Clinical MLOps Architect
