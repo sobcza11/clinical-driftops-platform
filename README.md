@@ -18,7 +18,7 @@
 ---
 
 ## 🧠 Objective
-Establish a **repeatable, auditable, and ethical MLOps framework** to detect and mitigate **data drift, model drift, & bias** across clinical AI use cases (e.g., sepsis risk, readmission, medication adherence) while preserving **trust, transparency, & regulatory compliance**.
+Establish a **repeatable, auditable, and ethical MLOps framework** to detect and mitigate **data drift, model drift, and bias** across clinical AI use cases (e.g., sepsis risk, readmission, medication adherence) while preserving **trust, transparency, and regulatory compliance**.
 
 ---
 
@@ -27,7 +27,7 @@ Establish a **repeatable, auditable, and ethical MLOps framework** to detect and
 - **Real-time monitoring:** PSI, KS, latency, and prediction errors
 - **Explainability:** SHAP + Permutation Importance, clinician-readable summaries
 - **Governance:** MLflow lineage, model cards, Policy-as-Code monitors
-- **Compliance:** HIPAA, FDA GMLP, EU AI Act, human-in-loop safeguards
+- **Ethical Adherence:** HIPAA, FDA GMLP, EU AI Act, human-in-loop safeguards
 
 ---
 
@@ -55,7 +55,7 @@ Establish a **repeatable, auditable, and ethical MLOps framework** to detect and
 
 ---
 
-## ⚖️ Compliance & Ethics
+## ⚖️ Governance & Ethics
 - **HIPAA:** de-identification; no PHI in repo  
 - **FDA GMLP:** lineage · reproducibility · audit controls  
 - **EU AI Act:** documentation · risk classification · monitoring  
@@ -85,6 +85,10 @@ clinical-driftops-platform/
 │ └─ kpi_dashboard_links.md
 ├─ LICENSE
 └─ README.md
+
+yaml
+Copy code
+
 ---
 
 ## 🚀 Quickstart
@@ -107,10 +111,7 @@ python -m src.monitors.run_baseline --config configs/baseline.yaml
 
 # Launch MLflow UI
 mlflow ui
-
-
 🧮 Explainability & Fairness
-
 SHAP (tree/kernel) for local + global attribution
 
 Permutation Importance as model-agnostic backup
@@ -118,7 +119,6 @@ Permutation Importance as model-agnostic backup
 Fairness Slices across age, gender, race + bias remediation playbook
 
 🧭 Roadmap
-
 Current: Phase II – Data Understanding (phase-ii-data-understanding)
 
 Next: Streamlit / Grafana dashboards for live drift monitoring
@@ -126,6 +126,20 @@ Next: Streamlit / Grafana dashboards for live drift monitoring
 Planned: GenAI Compliance Sentinel for RAG-based FDA/HIPAA/EU AI Act diff alerts
 
 👤 Credits
-
 Rand Sobczak Jr., PMI-CPMAI™
 Project Lead · Clinical MLOps Architect
+
+📜 License
+MIT License · © 2025 Rand Sobczak Jr.
+
+yaml
+Copy code
+
+---
+
+### ✅ After pasting:
+In Visual Studio Terminal:
+```bash
+git add README.md
+git commit -m "Fix README formatting and Governance terminology"
+git push
