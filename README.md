@@ -66,28 +66,31 @@ Establish a **repeatable, auditable, and ethical MLOps framework** to detect and
 ---
 
 ## 📂 Repository Structure
+
+```plaintext
 clinical-driftops-platform/
 ├─ assets/
-│ └─ driftOps_pic_h.png # banner image
-├─ data/ # sample or synthetic schemas
-├─ notebooks/ # EDA · drift baseline · bias analysis
+│  └─ driftOps_pic_h.png              # banner image
+├─ data/                              # sample or synthetic schemas
+├─ notebooks/                         # EDA · drift baseline · bias analysis
 ├─ src/
-│ ├─ data_prep.py # PII-safe transforms + lineage
-│ ├─ driftops_service.py # APIs for drift / bias / explain
-│ ├─ monitors/ # PSI · KS · latency · error monitors
-│ └─ explain/ # SHAP + Permutation Importance
+│  ├─ data_prep.py                    # PII-safe transforms + lineage
+│  ├─ driftops_service.py             # APIs for drift / bias / explain
+│  ├─ monitors/                       # PSI · KS · latency · error monitors
+│  └─ explain/                        # SHAP + Permutation Importance
 ├─ ops/
-│ ├─ ci/ # GitHub Actions / CI workflows
-│ ├─ mlflow/ # experiment registry config
-│ └─ policy/ # Policy-as-Code sentinels
+│  ├─ ci/                             # GitHub Actions / CI workflows
+│  ├─ mlflow/                         # experiment registry config
+│  └─ policy/                         # Policy-as-Code sentinels
 ├─ reports/
-│ ├─ trustworthy_ai_audit_v1.md # Phase V artifact
-│ └─ kpi_dashboard_links.md
+│  ├─ trustworthy_ai_audit_v1.md      # Phase V artifact
+│  └─ kpi_dashboard_links.md
 ├─ LICENSE
 └─ README.md
-
 yaml
 Copy code
+
+That inner `plaintext` fence is what forces GitHub to render it as a neat folder tree with indentation preserved.
 
 ---
 
