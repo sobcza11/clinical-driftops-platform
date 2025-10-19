@@ -1,65 +1,68 @@
-🧭 Clinical DriftOps Platform
+<h1 align="center">🏥 Clinical DriftOps Platform</h1>
+<h3 align="center"><i>PMI-CPMAI™-Aligned MLOps for Safe, Explainable Clinical AI</i></h3>
 
-A PMI-CPMAI™-Aligned Framework for Trustworthy Clinical MLOps
+<p align="center">
+  <img src="assets/driftOps_pic_h.png" alt="Clinical DriftOps Overview" width="400"/>
+</p>
 
-Prepared By: Rand Sobczak Jr., PMI-CPMAI™
-Version: 1.0 | Date: October 2025
+<p align="center">
+  <img src="https://img.shields.io/badge/Framework-PMI--CPMAI™-blueviolet" />
+  <img src="https://img.shields.io/badge/Compliance-HIPAA%20%7C%20FDA%20GMLP%20%7C%20EU%20AI%20Act-success" />
+  <img src="https://img.shields.io/badge/Monitoring-Evidently%20PSI%20%7C%20KS-informational" />
+  <img src="https://img.shields.io/badge/Explainability-SHAP%20%7C%20Permutation%20Importance-lightgrey" />
+  <img src="https://img.shields.io/badge/Tracking-MLflow%20Lineage%20%7C%20Artifacts-orange" />
+  <img src="https://img.shields.io/badge/Language-Python%203.10+-blue" />
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" />
+</p>
 
-🎯 Purpose & Vision
+---
 
-To create a repeatable, auditable, and ethical MLOps framework for detecting and mitigating model and data drift in clinical AI systems.
-Goals: improve model reliability, maintain regulatory compliance, and strengthen clinician trust in decision-support AI.
+## 🧠 Objective
+Establish a **repeatable, auditable, and ethical MLOps framework** to detect and mitigate **data drift, model drift, and bias** across clinical AI use cases (e.g., sepsis risk, readmission, medication adherence) while preserving **trust, transparency, and regulatory compliance**.
 
-⚙️ Scope
-Component	Description
-Primary Function	Drift & bias monitoring for predictive clinical models
-Environment	Hybrid Cloud (Azure ML + FHIR-compliant Data Lake)
-Model Types	Classification & forecasting (sepsis risk, readmission, adherence)
-Boundary	Decision-support only; no direct patient actions without human review
-🧩 CPMAI Phase Mapping (I → VI)
-Phase	Objective	Key Deliverables
-I – Business Understanding	Define clinical problem, KPIs, stakeholders, and ethical boundaries.	Project Charter + Regulatory Scope (HIPAA, FDA GMLP, EU AI Act)
-II – Data Understanding	Audit data sources (MIMIC-IV, FHIR); profile drift and bias.	Evidently AI Baseline Report (PSI, KS tests) + Metadata Dictionary
-III – Data Preparation	Build clean, PII-safe datasets and feature stores with version tags.	data_prep.py + Data Lineage JSON
-IV – Model Development	Implement drift/bias detectors + explainability (SHAP, Evidently).	driftops_service.py microservice + Docker container
-V – Model Evaluation	Validate accuracy, fairness, and trustworthiness.	“Trustworthy AI Audit v1.0” report + bias dashboard
-VI – Operationalization	Deploy & monitor models with MLflow + Policy-as-Code.	CI/CD workflow + Regulatory Sentinel alerts
-⚖️ Compliance & Ethics Anchors
+---
 
-HIPAA — Data de-identification & PHI safeguards
+## 📌 Highlights
+- **PMI-CPMAI™ aligned** lifecycle with explicit deliverables per phase (I → VI)
+- **Real-time monitoring:** PSI, KS, latency, and prediction errors
+- **Explainability:** SHAP + Permutation Importance, clinician-readable summaries
+- **Governance:** MLflow lineage, model cards, Policy-as-Code monitors
+- **Compliance:** HIPAA, FDA GMLP, EU AI Act, human-in-loop safeguards
 
-FDA GMLP — Good Machine Learning Practice alignment
+---
 
-EU AI Act — High-risk AI governance obligations
+## 🧩 CPMAI Phase Map (I → VI)
 
-NIST SP 800-53 — Security controls for data pipelines
+| Phase | Objective | Key Outputs |
+| :--- | :--- | :--- |
+| **I. Business Understanding** | Define clinical problem, KPIs, stakeholders, ethics. | Charter · KPI Matrix · Risk Register |
+| **II. Data Understanding** | Profile MIMIC-IV / FHIR sources; identify drift & bias. | Evidently Baseline Report · Data Dictionary |
+| **III. Data Preparation** | PII-safe transforms, feature store, versioning. | `data_prep.py` · Metadata JSON |
+| **IV. Model Development** | Drift/bias detection + explainability; containerization. | `driftops_service.py` · Dockerfile |
+| **V. Model Evaluation** | Validate reliability & trustworthiness. | “Trustworthy AI Audit v1.0” PDF/MD |
+| **VI. Operationalization** | CI/CD · MLflow · live monitors · HITL retraining. | MLflow Registry · Policy Sentinel · Dashboards |
 
-Human-in-Loop review at every critical decision node
+---
 
-Audit Trails via MLflow + GenAI-authored reports
+## 📊 Key Performance Indicators
 
-📊 Key Performance Indicators
-KPI	Target	Measurement	Owner
-False-alert reduction	≥ 20 % vs baseline	Alert log comparison	Clinical Lead
-Drift detection latency	≤ 3 days	PSI/KS pipeline	Data Science Lead
-Clinician trust score	≥ 8 / 10	Survey & feedback forms	Compliance Officer
-Model AUC stability	≤ 5 % QoQ decay	Validation dashboard	Data Ops Engineer
-🚀 Next Steps (Phase II – Data Understanding)
+| KPI | Target | Measurement | Owner |
+| :--- | ---: | :--- | :--- |
+| False-alert reduction | ≥ 20 % vs baseline | Alert log analysis | Clinical Lead |
+| Drift detection latency | ≤ 3 days | PSI/KS pipeline | Data Science Lead |
+| Clinician trust score | ≥ 8 / 10 | Surveys · Focus Groups | Compliance Officer |
+| Model AUC stability | ≤ 5 % QoQ decay | Validation dashboard | Data Ops Engineer |
 
-Collect baseline MIMIC-IV v2.2 and/or synthetic FHIR tables.
+---
 
-Profile historical drift and bias patterns (Evidently AI).
+## ⚖️ Compliance & Ethics
+- **HIPAA:** de-identification; no PHI in repo  
+- **FDA GMLP:** lineage · reproducibility · audit controls  
+- **EU AI Act:** documentation · risk classification · monitoring  
+- **NIST SP 800-53:** security baseline for pipelines  
+- **Human-in-Loop (HITL):** approval at critical decision nodes  
+- **Audit Trails:** MLflow artifacts + signed reports  
 
-Generate metadata dictionary and data risk map.
+---
 
-Branch creation: phase-ii-data-understanding.
-
-🧠 Strategic Alignment
-
-This initiative operationalizes PMI-CPMAI™ within healthcare AI MLOps to demonstrate:
-
-Repeatable AI governance cycles
-
-Regulatory integration from inception to deployment
-
-Continuous trust improvement via drift management and explainability
+## 📂 Repository Structure
