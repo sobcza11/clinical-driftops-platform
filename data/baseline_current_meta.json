@@ -1,0 +1,30 @@
+{
+  "standard": "PMI-CPMAI Phase II sample build",
+  "source_version": "MIMIC-IV v2.2",
+  "filters": {
+    "labs": [
+      "WBC",
+      "LACTATE",
+      "CREATININE"
+    ],
+    "window": "first 24h from admittime",
+    "rows_scanned_target": 100000
+  },
+  "row_counts": {
+    "baseline": 2497,
+    "current": 2498
+  },
+  "columns": [
+    "subject_id",
+    "hadm_id",
+    "anchor_age",
+    "gender",
+    "admission_type",
+    "wbc",
+    "lactate",
+    "creatinine",
+    "charttime",
+    "anchor_year_group"
+  ],
+  "created_at": "2025-10-19T20:59:02.941863+00:00"
+}

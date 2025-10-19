@@ -67,6 +67,22 @@ Establish a **repeatable, auditable, and ethical MLOps framework** to detect and
 
 ## 🧩 Data Access & Ethical Credentialing
 This project uses **MIMIC-IV v2.2** under PhysioNet’s *Credentialed Health Data License*.  
+All analyses were performed by **Rand Sobczak**, a **credentialed researcher** certified in **Human Subjects Research – Biomedical (Biomed) Foundations** through the **CITI Program** *(valid Jun 2025 – Jun 2026)*.
+
+<details>
+  <summary>View CITI Program Certificate</summary>
+  <p align="center">
+    <img src="assets/Rand_Sobczak_Cert_Biomed_Foundations.jpg" width="600" alt="CITI Program Certification – Human Subjects Research (Biomedical Foundations)"/>
+  </p>
+</details>
+
+For dataset details and access requirements, visit  
+🔗 [PhysioNet MIMIC-IV Project Page](https://physionet.org/content/mimiciv/2.2/)
+
+---
+
+## 🧩 Data Access & Ethical Credentialing
+This project uses **MIMIC-IV v2.2** under PhysioNet’s *Credentialed Health Data License*.  
 All **analyses were performed by myself**, a **credentialed researcher**, in compliance with the **CITI Program – Biomedical (Biomed) Foundations certification** (Valid Jun 2025 – Jun 2026).  
 
 For dataset details and access requirements, visit  
