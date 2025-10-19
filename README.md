@@ -70,7 +70,7 @@ This project uses **MIMIC-IV v2.2** under PhysioNet’s *Credentialed Health Dat
 All analyses were performed by **Rand Sobczak**, a **credentialed researcher** certified in **Human Subjects Research – Biomedical (Biomed) Foundations** through the **CITI Program** *(valid Jun 2025 – Jun 2026)*.
 
 <details>
-  <summary>View CITI Program Certificate</summary>
+  <summary>View Rand Sobczak's CITI Program Certificate</summary>
   <p align="center">
     <img src="assets/Rand_Sobczak_Cert. – Biomedical (Biomed) Foundations.jpg" width="600" alt="CITI Program Certification – Human Subjects Research (Biomedical Foundations)"/>
   </p>
