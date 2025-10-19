@@ -7,7 +7,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Framework-PMI--CPMAI™-blueviolet" />
-  <img src="https://img.shields.io/badge/Compliance-HIPAA%20%7C%20FDA%20GMLP%20%7C%20EU%20AI%20Act-success" />
+  <img src="https://img.shields.io/badge/Adherence-HIPAA%20%7C%20FDA%20GMLP%20%7C%20EU%20AI%20Act-success" />
   <img src="https://img.shields.io/badge/Monitoring-Evidently%20PSI%20%7C%20KS-informational" />
   <img src="https://img.shields.io/badge/Explainability-SHAP%20%7C%20Permutation%20Importance-lightgrey" />
   <img src="https://img.shields.io/badge/Tracking-MLflow%20Lineage%20%7C%20Artifacts-orange" />
