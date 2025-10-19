@@ -11,10 +11,10 @@
   <img src="https://img.shields.io/badge/Monitoring-Evidently%20PSI%20%7C%20KS-informational" />
   <img src="https://img.shields.io/badge/Explainability-SHAP%20%7C%20Permutation%20Importance-lightgrey" />
   <img src="https://img.shields.io/badge/Tracking-MLflow%20Lineage%20%7C%20Artifacts-orange" />
+  <img src="https://img.shields.io/badge/GenAI-Compliance%20Sentinel%20%7C%20RAG--based-purple" />
   <img src="https://img.shields.io/badge/Language-Python%203.10+-blue" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg" />
 </p>
-
 ---
 
 ## 🧠 Objective
