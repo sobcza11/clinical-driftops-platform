@@ -89,11 +89,6 @@ clinical-driftops-platform/
 └─ README.md
 ```
 
-yaml
-Copy code
-
-That inner `plaintext` fence is what forces GitHub to render it as a neat folder tree with indentation preserved.
-
 ---
 
 ## 🚀 Quickstart
