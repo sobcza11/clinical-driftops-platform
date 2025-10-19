@@ -72,7 +72,7 @@ All analyses were performed by **Rand Sobczak**, a **credentialed researcher** c
 <details>
   <summary>View CITI Program Certificate</summary>
   <p align="center">
-    <img src="assets/Rand_Sobczak_Cert_Biomed_Foundations.jpg" width="600" alt="CITI Program Certification – Human Subjects Research (Biomedical Foundations)"/>
+    <img src="assets/Rand_Sobczak_Cert. – Biomedical (Biomed) Foundations.jpg" width="600" alt="CITI Program Certification – Human Subjects Research (Biomedical Foundations)"/>
   </p>
 </details>
 
