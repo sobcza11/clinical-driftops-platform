@@ -53,6 +53,8 @@ Establish a **repeatable, auditable, and ethical MLOps framework** to detect and
 | Clinician trust score | ≥ 8 / 10 | Surveys · Focus Groups | Compliance Officer |
 | Model AUC stability | ≤ 5 % QoQ decay | Validation dashboard | Data Ops Engineer |
 
+- ✅ **Phase III — Data Preparation complete:** standardized features, outlier handling, scaler params & manifest (`reports/data_prep_meta.json`), and initial drift report (`reports/data_drift_small_demo.html`).
+
 ---
 
 ## ⚖️ Governance & Ethics
