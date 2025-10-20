@@ -1,0 +1,16 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.ipynb_checkpoints
+.git
+.gitignore
+.env
+**/raw/
+**/*.parquet
+**/*.feather
+**/*.zip
+**/*.gz
+**/*.tar
+**/*.tar.gz
+**/*.7z
