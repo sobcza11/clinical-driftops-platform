@@ -6,8 +6,10 @@
 </p>
 
 <p align="center">
-![Phase V – Evaluation In Progress](https://img.shields.io/badge/Phase%20V-Evaluation%20In%20Progress-purple)
-[![CI – DriftOps](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg)](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml)
+  <img src="https://img.shields.io/badge/Phase%20V-Evaluation%20In%20Progress-purple" />
+  <a href="https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml">
+    <img src="https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg" alt="CI – DriftOps" />
+  </a>
 </p>
 
 <p align="center">
