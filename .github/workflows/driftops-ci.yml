@@ -25,8 +25,44 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install wheel
           pip install -r requirements.txt
           pip install pytest
+
+      # 🔎 DIAG 1: show env + versions
+      - name: Python env
+        run: |
+          python -V
+          pip --version
+          python -c "import sys, platform; print(platform.platform()); print('PY:',sys.version)"
+          python -c "import numpy, pandas, sklearn; print('numpy', numpy.__version__, 'pandas', pandas.__version__, 'sklearn', sklearn.__version__)"
+
+      # 🔎 DIAG 2: show repo tree + data heads
+      - name: Repo tree (top level)
+        run: ls -la
+
+      - name: Repo tree (src + reports + data)
+        run: |
+          ls -la src || true
+          ls -la src/monitors || true
+          ls -la src/explain || true
+          ls -la src/eval || true
+          ls -la reports || true
+          ls -la data || true
+
+      - name: Peek data files
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          import os
+          for p in ["data/data_prepared_baseline.csv","data/data_prepared_current.csv"]:
+              if os.path.exists(p):
+                  df = pd.read_csv(p, nrows=5)
+                  print(f"\n{p} -> cols:", list(df.columns))
+                  print(df.head().to_string(index=False))
+              else:
+                  print(f"Missing: {p}")
+          PY
 
       - name: Run unit tests
         run: pytest -q
