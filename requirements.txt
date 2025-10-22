@@ -1,8 +1,13 @@
+# Core dependencies
 pandas>=2.2
-numpy>=1.26
+numpy>=1.26,<2.0
 scipy>=1.11
 scikit-learn>=1.4
+
+# Monitoring / reporting
 evidently==0.6.7
-matplotlib>=3.8
-shap>=0.44
 tabulate>=0.9
+
+# Explainability
+matplotlib>=3.8
+shap==0.44.1

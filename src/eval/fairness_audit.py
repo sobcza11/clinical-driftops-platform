@@ -1,54 +1,41 @@
 """
-Phase V — Fairness Audit (group disparity)
-Produces per-group positive rate and disparity relative to overall mean.
-If group column or label is missing, writes a stub so CI stays green.
+Run a simple fairness audit by comparing positive rates between groups.
+Usage:
+    python -m src.eval.fairness_audit --data data/data_prepared_current.csv --group gender --out_csv reports/fairness_metrics.csv --out_md reports/fairness_report.md
 """
+
 import argparse
 import pandas as pd
-import numpy as np
 
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--data", required=True)
-    p.add_argument("--group", required=True)
-    p.add_argument("--out_csv", required=True)
-    p.add_argument("--out_md", required=True)
-    args = p.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data", required=True)
+    parser.add_argument("--group", required=True)
+    parser.add_argument("--out_csv", required=True)
+    parser.add_argument("--out_md", required=True)
+    args = parser.parse_args()
 
     df = pd.read_csv(args.data)
+    if "label" not in df.columns:
+        print("⚠️ No 'label' column; audit skipped.")
+        return
 
     if args.group not in df.columns:
-        note = f"Group column '{args.group}' not found; audit skipped."
-        pd.DataFrame({"note":[note]}).to_csv(args.out_csv, index=False)
-        with open(args.out_md, "w", encoding="utf-8") as f:
-            f.write(f"# Fairness Audit\n\n{note}\n")
-        print("⚠️", note)
+        print(f"⚠️ Group column '{args.group}' not found.")
         return
 
-    if "label" not in df.columns:
-        note = "No 'label' column; audit skipped."
-        pd.DataFrame({"note":[note]}).to_csv(args.out_csv, index=False)
-        with open(args.out_md, "w", encoding="utf-8") as f:
-            f.write(f"# Fairness Audit\n\n{note}\n")
-        print("⚠️", note)
-        return
+    metrics = (
+        df.groupby(args.group)["label"]
+        .agg(["mean", "count"])
+        .rename(columns={"mean": "positive_rate"})
+        .reset_index()
+    )
 
-    rows = []
-    overall_rate = float(df["label"].mean())
-    for g, sub in df.groupby(args.group):
-        pr = float(sub["label"].mean()) if len(sub) else np.nan
-        rows.append({"group": str(g), "n": int(len(sub)), "positive_rate": pr})
+    metrics.to_csv(args.out_csv, index=False)
 
-    out = pd.DataFrame(rows)
-    out["disparity"] = out["positive_rate"] - overall_rate
-    out.to_csv(args.out_csv, index=False)
-
-    with open(args.out_md, "w", encoding="utf-8") as f:
-        f.write("# Fairness Audit\n\n")
-        f.write(f"**Group column:** `{args.group}`\n\n")
-        f.write(f"**Overall positive rate:** {overall_rate:.4f}\n\n")
-        f.write(out.to_markdown(index=False))
-        f.write("\n")
+    # write simple markdown table
+    with open(args.out_md, "w") as f:
+        f.write(metrics.to_markdown(index=False))
 
     print(f"✅ fairness metrics → {args.out_csv}")
     print(f"✅ fairness report  → {args.out_md}")
