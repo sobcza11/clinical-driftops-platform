@@ -5,6 +5,10 @@
   <img src="assets/driftOps_pic_h.png" alt="Clinical DriftOps Overview" width="600"/>
 </p>
 
+![Phase V – Evaluation In Progress](https://img.shields.io/badge/Phase%20V-Evaluation%20In%20Progress-purple)
+
+[![CI – DriftOps](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg)](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml)
+
 <p align="center">
   <img src="https://img.shields.io/badge/Framework-PMI--CPMAI™-blueviolet" />
   <img src="https://img.shields.io/badge/Governance-HIPAA%20%7C%20FDA%20GMLP%20%7C%20EU%20AI%20Act-success" />
