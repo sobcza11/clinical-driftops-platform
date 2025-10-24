@@ -22,6 +22,13 @@
   <img src="https://img.shields.io/badge/Language-Python%203.10+-blue" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg" />
 </p>
+
+<p align="center">
+  <a href="reports/trustworthy_ai_audit_v1.md">
+    <img src="https://img.shields.io/badge/Report-Trustworthy%20AI%20Audit%20v1.0-blue" alt="Trustworthy AI Audit v1.0" />
+  </a>
+</p>
+
 ---
 
 ## 🧠 Objective
