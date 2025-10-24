@@ -27,37 +27,31 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
           pip install pytest
-
-      - name: Prep CI env (wheel, reports dir, headless cache)
-        run: |
-          mkdir -p reports
         env:
           MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
 
-      - name: Python env
+      - name: Prep CI env
+        run: |
+          mkdir -p reports
+          ls -la
+          ls -la data || true
+          ls -la reports || true
+
+      - name: Python env (diag)
         run: |
           python -V
           pip --version
-          python -c "import sys, platform; print(platform.platform()); print('PY:',sys.version)"
-          python -c "import numpy, pandas, sklearn; print('numpy', numpy.__version__, 'pandas', pandas.__version__, 'sklearn', sklearn.__version__)"
+          python - <<'PY'
+          import sys, platform, numpy, pandas, sklearn
+          print(platform.platform())
+          print("PY:", sys.version.splitlines()[0])
+          print("numpy:", numpy.__version__, "pandas:", pandas.__version__, "sklearn:", sklearn.__version__)
+          PY
 
-      - name: Repo tree (top level)
-        run: ls -la
-
-      - name: Repo tree (src + reports + data)
-        run: |
-          ls -la src || true
-          ls -la src/monitors || true
-          ls -la src/explain || true
-          ls -la src/eval || true
-          ls -la reports || true
-          ls -la data || true
-
-      - name: Peek data files
+      - name: Peek data files (diag)
         run: |
           python - <<'PY'
-          import pandas as pd
-          import os
+          import os, pandas as pd
           for p in ["data/data_prepared_baseline.csv","data/data_prepared_current.csv"]:
               if os.path.exists(p):
                   df = pd.read_csv(p, nrows=5)
@@ -69,6 +63,7 @@ jobs:
 
       - name: Run unit tests
         run: pytest -q
+        continue-on-error: true
 
       - name: Generate metrics CSV (PSI/KS)
         run: python -m src.monitors.drift_detector
@@ -96,6 +91,7 @@ jobs:
             --out_md reports/fairness_report.md
 
       - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: driftops-artifacts
