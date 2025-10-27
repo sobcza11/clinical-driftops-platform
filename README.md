@@ -29,6 +29,11 @@
 
 ---
 
+## 🧠 Objective
+Establish a **repeatable, auditable, and ethical MLOps framework** to detect and mitigate **data drift, model drift, and bias** across clinical AI use cases (e.g., sepsis risk, readmission, medication adherence) while preserving **trust, transparency, and regulatory compliance**.
+
+---
+
 ## 🔎 Open the Dashboard (Phase VI)
 
 Each CI run generates a **Clinical DriftOps Dashboard** summarizing:
@@ -68,10 +73,6 @@ Each CI run generates a **Clinical DriftOps Dashboard** summarizing:
 
 ---
 
-## 🧠 Objective
-Establish a **repeatable, auditable, and ethical MLOps framework** to detect and mitigate **data drift, model drift, and bias** across clinical AI use cases (e.g., sepsis risk, readmission, medication adherence) while preserving **trust, transparency, and regulatory compliance**.
-
----
 
 ## 📌 Highlights
 - **PMI-CPMAI™ aligned** lifecycle with explicit deliverables per phase (I → VI)
