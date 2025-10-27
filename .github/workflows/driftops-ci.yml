@@ -1,6 +1,7 @@
 # ======================================================================
-# File: clinical-driftops-platform/.github/workflows/driftops-ci.yml
-# Purpose: DriftOps Phase VI CI workflow (prep → drift → shap → fairness → gate → dashboard → artifacts → (optional) pages)
+# File: .github/workflows/driftops-ci.yml
+# Purpose: DriftOps CI + GitHub Pages deployment of reports/index.html
+# Pipeline: prep → drift → shap → fairness → gate → dashboard → artifacts → pages
 # ======================================================================
 
 name: DriftOps CI
@@ -10,9 +11,17 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
+# Needed for Pages deployment
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -32,24 +41,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # MLflow backend (file-based for CI lineage)
       - name: Set MLflow backend (file-based)
         run: echo "MLFLOW_TRACKING_URI=file://$GITHUB_WORKSPACE/mlruns" >> $GITHUB_ENV
 
       - name: Ensure reports dir
         run: mkdir -p reports
 
-      # Phase III – Data Preparation
+      # --- Phase III — Data Prep ---
       - name: Data prep (baseline/current)
         run: |
           python src/data_prep.py --scaler standard --outliers zscore
           ls -lah data | sed -n '1,200p'
 
-      # Phase IV – Drift Detection
+      # --- Phase IV — Drift ---
       - name: Drift detector
         run: python src/monitors/drift_detector.py
 
-      # Phase V – Explainability (SHAP)
+      # --- Phase V — SHAP ---
       - name: SHAP explainability
         run: |
           python src/explain/shap_summary.py \
@@ -57,21 +65,21 @@ jobs:
             --out reports/shap_top_features.png \
             --topk 15
 
-      # Phase V – Fairness Audit (optional)
+      # --- Phase V — Fairness (optional) ---
       - name: Fairness audit
         run: python src/eval/fairness_audit.py
         continue-on-error: true
 
-      # Phase V – Trustworthy AI Audit (optional)
+      # --- Phase V — Trustworthy Audit (optional) ---
       - name: Build trustworthy audit
         run: python src/eval/make_trustworthy_audit.py
         continue-on-error: true
 
-      # Phase VI – Policy gate
+      # --- Phase VI — Policy Gate ---
       - name: Enforce policy gate
         run: python src/ops/policy_gate.py
 
-      # Always upload the gate JSON as a separate artifact (useful on failure)
+      # Always upload gate JSON (useful even on failure)
       - name: Upload policy gate result
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -80,19 +88,37 @@ jobs:
           path: reports/policy_gate_result.json
           if-no-files-found: warn
 
-      # Build Step 3 dashboard (index.html)
+      # --- Build the HTML dashboard ---
       - name: Build dashboard
         run: python src/reports_dashboard.py
 
-      # Upload all artifacts for audit trail & reviewer access
-      - name: Upload artifacts
+      # Upload bundle as a downloadable artifact (zip)
+      - name: Upload artifacts (zip)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: driftops-reports
           path: |
             reports/**
-            reports/index.html
             mlruns/**
             policy.yaml
           if-no-files-found: warn
+          retention-days: 30
+
+      # --- Pages artifact for deployment (publishes /reports as a site) ---
+      - name: Upload Pages artifact
+        if: ${{ always() }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: reports
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
