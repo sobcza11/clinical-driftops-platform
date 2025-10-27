@@ -1,3 +1,8 @@
+# ======================================================================
+# File: clinical-driftops-platform/.github/workflows/driftops-ci.yml
+# Purpose: DriftOps Phase VI CI workflow (prep → drift → shap → fairness → gate → dashboard → artifacts → (optional) pages)
+# ======================================================================
+
 name: DriftOps CI
 
 on:
@@ -5,6 +10,9 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -24,25 +32,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Use file-based MLflow store so artifacts are captured & uploaded
+      # MLflow backend (file-based for CI lineage)
       - name: Set MLflow backend (file-based)
         run: echo "MLFLOW_TRACKING_URI=file://$GITHUB_WORKSPACE/mlruns" >> $GITHUB_ENV
 
       - name: Ensure reports dir
         run: mkdir -p reports
 
-      # --- Data prep FIRST so downstream steps have files ---
+      # Phase III – Data Preparation
       - name: Data prep (baseline/current)
         run: |
           python src/data_prep.py --scaler standard --outliers zscore
           ls -lah data | sed -n '1,200p'
 
-      # --- Drift detection ---
+      # Phase IV – Drift Detection
       - name: Drift detector
         run: python src/monitors/drift_detector.py
 
-      # --- Explainability (SHAP) ---
-      # If your current prepared CSV lives at data/data_prepared_current.csv, keep this path.
+      # Phase V – Explainability (SHAP)
       - name: SHAP explainability
         run: |
           python src/explain/shap_summary.py \
@@ -50,17 +57,34 @@ jobs:
             --out reports/shap_top_features.png \
             --topk 15
 
-      # --- Fairness audit (optional but expected by gate to warn if missing) ---
-      # If you have this script, keep it; otherwise comment this step out.
+      # Phase V – Fairness Audit (optional)
       - name: Fairness audit
         run: python src/eval/fairness_audit.py
         continue-on-error: true
 
-      # --- Enforce thresholds ---
-      - name: Policy gate
+      # Phase V – Trustworthy AI Audit (optional)
+      - name: Build trustworthy audit
+        run: python src/eval/make_trustworthy_audit.py
+        continue-on-error: true
+
+      # Phase VI – Policy gate
+      - name: Enforce policy gate
         run: python src/ops/policy_gate.py
 
-      # --- Upload artifacts regardless of pass/fail ---
+      # Always upload the gate JSON as a separate artifact (useful on failure)
+      - name: Upload policy gate result
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy_gate_result
+          path: reports/policy_gate_result.json
+          if-no-files-found: warn
+
+      # Build Step 3 dashboard (index.html)
+      - name: Build dashboard
+        run: python src/reports_dashboard.py
+
+      # Upload all artifacts for audit trail & reviewer access
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -68,5 +92,7 @@ jobs:
           name: driftops-reports
           path: |
             reports/**
+            reports/index.html
             mlruns/**
             policy.yaml
+          if-no-files-found: warn
