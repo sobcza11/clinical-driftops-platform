@@ -2,12 +2,11 @@ name: DriftOps CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
   workflow_dispatch:
 
-# Required for GitHub Pages
 permissions:
   contents: read
   pages: write
@@ -42,36 +41,29 @@ jobs:
       - name: Ensure reports dir
         run: mkdir -p reports
 
-      # --- Seed tiny predictions if missing (so perf section always shows) ---
+      # Seed tiny predictions if none present (no heredoc; safe YAML)
       - name: Seed predictions if missing
-        if: ${{ always() }}
         run: |
           if [ ! -f reports/predictions.csv ] && [ ! -f reports/predictions_current.csv ] && [ ! -f data/predictions.csv ]; then
-            cat << 'CSV' > reports/predictions.csv
-y_true,y_score
-0,0.10
-1,0.90
-0,0.20
-1,0.80
-CSV
+            printf "y_true,y_score\n0,0.10\n1,0.90\n0,0.20\n1,0.80\n" > reports/predictions.csv
           fi
 
-      # --- Phase V: Performance metrics (AUROC/AUPRC) ---
+      # Phase V — Performance metrics (run early and always)
       - name: Performance metrics
         if: ${{ always() }}
         run: python src/eval/performance_metrics.py
 
-      # --- Phase III: Data prep ---
+      # Phase III — Data prep
       - name: Data prep
         run: |
           python src/data_prep.py --scaler standard --outliers zscore
           ls -lah data | sed -n '1,200p'
 
-      # --- Phase IV: Drift ---
+      # Phase IV — Drift
       - name: Drift detector
         run: python src/monitors/drift_detector.py
 
-      # --- Phase V: SHAP ---
+      # Phase V — SHAP
       - name: SHAP explainability
         run: |
           python src/explain/shap_summary.py \
@@ -79,21 +71,21 @@ CSV
             --out reports/shap_top_features.png \
             --topk 15
 
-      # --- Phase V: Fairness (optional) ---
+      # Phase V — Fairness (optional)
       - name: Fairness audit
         run: python src/eval/fairness_audit.py
         continue-on-error: true
 
-      # --- Phase V: Trustworthy Audit (optional) ---
+      # Phase V — Trustworthy Audit (optional)
       - name: Build trustworthy audit
         run: python src/eval/make_trustworthy_audit.py
         continue-on-error: true
 
-      # --- Phase VI: Policy gate (hard fail if violated) ---
+      # Phase VI — Policy gate (hard fail if violated)
       - name: Enforce policy gate
         run: python src/ops/policy_gate.py
 
-      # --- Always build dashboard & upload artifacts (even on fail) ---
+      # Always build dashboard & upload artifacts
       - name: Build dashboard
         if: ${{ always() }}
         run: python src/reports_dashboard.py
@@ -110,7 +102,7 @@ CSV
           if-no-files-found: warn
           retention-days: 30
 
-      # --- Pages artifact (publishes ./reports) ---
+      # Pages artifact (publishes ./reports)
       - name: Upload Pages artifact
         if: ${{ always() }}
         uses: actions/upload-pages-artifact@v3
@@ -118,7 +110,6 @@ CSV
           path: reports
 
   deploy:
-    # publish even if gate fails, so dashboard is visible
     if: ${{ always() }}
     needs: build
     runs-on: ubuntu-latest
