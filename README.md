@@ -21,6 +21,12 @@
   <img src="https://img.shields.io/badge/Dashboard-Artifacts%20%2F%20index.html-blue?logo=github" alt="Dashboard Artifact"/>
 </p>
 
+<p align="center">
+  <a href="https://sobcza11.github.io/clinical-driftops-platform/">
+    <img src="https://img.shields.io/badge/Dashboard-GitHub%20Pages-brightgreen?logo=githubpages" alt="Dashboard on GitHub Pages"/>
+  </a>
+</p>
+
 ---
 
 ## 🔎 Open the Dashboard (Phase VI)
