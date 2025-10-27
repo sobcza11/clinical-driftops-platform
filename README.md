@@ -69,3 +69,18 @@ fairness:
 explainability:
   require_shap_artifact: true
   top_features_min: 10
+
+
+## 🚀 Phase VI — Operationalization (Coming Soon)
+
+> Building toward live, explainable, continuously governed clinical AI
+
+| Capability | Description | Target Artifact |
+|-------------|--------------|----------------|
+| **Real-Time MLflow Registry** | Transition from file-based tracking to MLflow’s tracking server for experiment lineage & model versioning. | `mlruns/registry.json` |
+| **Continuous Validation API** | REST endpoint for on-demand drift/fairness scoring across live inference data. | `src/api/validation_server.py` |
+| **FHIR Integration** | Stream ICU vitals + labs into MIMIC-compatible pipelines for real-time monitoring. | `src/connectors/fhir_stream.py` |
+| **Alerting & Human-in-Loop Review** | Slack/Teams notifications when policy gate fails, with clinician acknowledgment workflow. | `src/ops/alerting.py` |
+| **Governance Dashboard v2** | Aggregate multi-model results into a single transparent clinical governance panel. | `reports/dashboard_v2.html` |
+
+🧭 *Phase VI aligns to PMI-CPMAI’s Operationalization & Monitoring phases — turning governance into live assurance.*
