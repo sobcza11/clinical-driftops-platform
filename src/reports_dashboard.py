@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json, base64
 from pathlib import Path
-from datetime import datetime, timrezone
+from datetime import datetime, timezone
 
 import pandas as pd
 
