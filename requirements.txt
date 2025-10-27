@@ -5,6 +5,7 @@ scikit-learn
 matplotlib
 shap==0.44.1
 pyyaml
-mlflow
+mlflow>=2.14.0
 evidently
 tabulate
+

@@ -1,0 +1,16 @@
+version: 1
+
+drift:
+  # PSI (Population Stability Index)
+  psi_warn: 0.10
+  psi_fail: 0.20
+  # KS (Kolmogorov–Smirnov)
+  ks_warn:  0.10
+  ks_fail:  0.20
+
+fairness:
+  parity_gap_fail: 0.05      # max allowed group disparity
+
+explainability:
+  top_features_min: 2
+  require_shap_artifact: true

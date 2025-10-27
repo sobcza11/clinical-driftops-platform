@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-
 def _psi_for_arrays(base: np.ndarray, curr: np.ndarray, n_bins: int = 10) -> float:
     base = base[~np.isnan(base)]
     curr = curr[~np.isnan(curr)]
@@ -32,12 +31,10 @@ def _psi_for_arrays(base: np.ndarray, curr: np.ndarray, n_bins: int = 10) -> flo
     psi = np.sum(diff * np.log(ratio))
     return float(psi)
 
-
 def compute_psi(base: pd.Series, curr: pd.Series, n_bins: int = 10) -> float:
     b = pd.to_numeric(base, errors="coerce").to_numpy()
     c = pd.to_numeric(curr, errors="coerce").to_numpy()
     return _psi_for_arrays(b, c, n_bins=n_bins)
-
 
 def ks_test_feature(base: pd.Series, curr: pd.Series):
     b = pd.to_numeric(base, errors="coerce").dropna()
@@ -46,7 +43,6 @@ def ks_test_feature(base: pd.Series, curr: pd.Series):
         return float("nan"), float("nan")
     d_stat, p_val = stats.ks_2samp(b, c, alternative="two-sided", mode="auto")
     return float(d_stat), float(p_val)
-
 
 def compare_dataframes(
     df_base: pd.DataFrame,
@@ -65,11 +61,11 @@ def compare_dataframes(
         ks_stat, ks_p = ks_test_feature(df_base[col], df_curr[col])
         rows.append(
             {"feature": col, "psi": psi, "ks_stat": ks_stat, "ks_pvalue": ks_p,
-             "drift_flag": (psi is not None and psi >= 0.2) or (ks_p is not None and ks_p < 0.01)}
+             "drift_flag": (psi is not None and not pd.isna(psi) and psi >= 0.2) or
+                           (ks_p is not None and not pd.isna(ks_p) and ks_p < 0.01)}
         )
     df = pd.DataFrame(rows).sort_values(["drift_flag", "psi", "ks_stat"], ascending=[False, False, False])
     return df
-
 
 def _cli():
     p = argparse.ArgumentParser()
@@ -86,6 +82,23 @@ def _cli():
     out.to_csv(out_path, index=False)
     print(f"Saved metrics → {out_path}")
 
+    # ---- MLflow logging (inside CLI, after metrics exist) ----
+    try:
+        from src.ops.mlflow_tracking import start_run, log_params, log_metrics, log_artifact
+        psi_max = float(out["psi"].max(skipna=True)) if not out.empty else 0.0
+        ks_max  = float(out["ks_stat"].max(skipna=True)) if not out.empty else 0.0
+        with start_run(run_name="drift-detector", tags={"phase": "VI"}):
+            log_params({"dataset": "baseline_vs_current", "n_features": len(out)})
+            log_metrics({"psi_max": psi_max, "ks_max": ks_max, "drift_flagged": flagged})
+            log_artifact(out_path)
+            # Attach Evidently HTML if your pipeline produces it:
+            html_path = "reports/data_drift_small_demo.html"
+            import os
+            if os.path.exists(html_path):
+                log_artifact(html_path)
+    except Exception as e:
+        print(f"[mlflow] skipping logging ({e})")
 
 if __name__ == "__main__":
     _cli()
+

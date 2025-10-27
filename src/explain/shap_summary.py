@@ -27,6 +27,8 @@ def main():
         plt.text(0.5, 0.5, "No label column found", ha="center", va="center")
         plt.axis("off")
         plt.savefig(args.out, bbox_inches="tight")
+        # MLflow: still log artifact for observability
+        _log_mlflow(top_n=args.topk, artifact_path=args.out, stub=True)
         return
 
     # separate features/target
@@ -49,6 +51,19 @@ def main():
     plt.tight_layout()
     plt.savefig(args.out, bbox_inches="tight")
     print(f"✅ saved SHAP summary → {args.out}")
+
+    _log_mlflow(top_n=args.topk, artifact_path=args.out, stub=False, model_params={"n_estimators": 100})
+
+def _log_mlflow(top_n: int, artifact_path: str, stub: bool, model_params: dict = None):
+    """Log SHAP artifact & params to MLflow (best-effort)."""
+    try:
+        from src.ops.mlflow_tracking import start_run, log_params, log_artifact
+        tags = {"phase": "VI", "component": "explainability", "stub_plot": str(stub)}
+        with start_run(run_name="shap-summary", tags=tags):
+            log_params({"top_n": top_n, **(model_params or {})})
+            log_artifact(artifact_path)
+    except Exception as e:
+        print(f"[mlflow] skipping logging ({e})")
 
 if __name__ == "__main__":
     main()
