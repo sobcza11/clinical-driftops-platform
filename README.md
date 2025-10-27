@@ -5,16 +5,18 @@
   <img src="assets/driftOps_pic_h.png" alt="Clinical DriftOps Overview" width="600"/>
 </p>
 
+<!-- ===== PRIMARY BADGES ===== -->
 <p align="center">
-  <img src="https://img.shields.io/badge/Phase%20V-Evaluation%20In%20Progress-purple" />
+  <img src="https://img.shields.io/badge/Phase%20VI-Operationalization%20Active-purple" />
   <a href="https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml">
     <img src="https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg" alt="CI – DriftOps" />
   </a>
 </p>
 
+<!-- ===== CI STATUS + DASHBOARD BADGE ===== -->
 <p align="center">
   <a href="https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/sobcza11/clinical-driftops-platform/driftops-ci.yml?label=DriftOps%20CI&logo=github&color=brightgreen" alt="CI Status" />
+    <img src="https://img.shields.io/github/actions/workflow/status/sobcza11/clinical-driftops-platform/driftops-ci.yml?branch=main&label=DriftOps%20CI&logo=github&color=brightgreen" alt="CI Status" />
   </a>
   <img src="https://img.shields.io/badge/Dashboard-Artifacts%20%2F%20index.html-blue?logo=github" alt="Dashboard Artifact"/>
 </p>
@@ -22,8 +24,10 @@
 ---
 
 ## 🔎 Open the Dashboard (Phase VI)
+
 Each CI run generates a **Clinical DriftOps Dashboard** summarizing:
-- ✅ Policy gate status (PASS/FAIL)  
+
+- ✅ Policy-gate status (**PASS / FAIL**)  
 - 📈 Drift & fairness metrics  
 - 🧠 SHAP explainability image  
 - ⚖️ Trustworthy AI Audit v1.0  
@@ -31,11 +35,14 @@ Each CI run generates a **Clinical DriftOps Dashboard** summarizing:
 ### ▶️ Access
 1. Go to **Actions → DriftOps CI → Latest Run**  
 2. Download artifact **`driftops-reports`**  
-3. Open **`reports/index.html`** locally in your browser
+3. Open **`reports/index.html`** locally in your browser  
 
 > *(Optional)* If GitHub Pages is enabled, your public dashboard will be here:  
 > **https://sobcza11.github.io/clinical-driftops-platform/**
 
+---
+
+<!-- ===== TECHNOLOGY & FRAMEWORK BADGES ===== -->
 <p align="center">
   <img src="https://img.shields.io/badge/Framework-PMI--CPMAI™-blueviolet" />
   <img src="https://img.shields.io/badge/Governance-HIPAA%20%7C%20FDA%20GMLP%20%7C%20EU%20AI%20Act-success" />
@@ -43,7 +50,7 @@ Each CI run generates a **Clinical DriftOps Dashboard** summarizing:
   <img src="https://img.shields.io/badge/Explainability-SHAP%20%7C%20Permutation%20Importance-lightgrey" />
   <img src="https://img.shields.io/badge/Tracking-MLflow%20Lineage%20%7C%20Artifacts-orange" />
   <img src="https://img.shields.io/badge/GenAI-Compliance%20Sentinel%20%7C%20RAG--based-purple" />
-  <img src="https://img.shields.io/badge/Language-Python%203.11+-blue" />
+  <img src="https://img.shields.io/badge/Language-Python%203.11-blue" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg" />
 </p>
 
