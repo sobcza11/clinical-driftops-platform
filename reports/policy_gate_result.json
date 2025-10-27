@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "timestamp_utc": "2025-10-27T14:23:21+00:00",
+  "timestamp_utc": "2025-10-27T19:52:42+00:00",
   "policy": {
     "version": 1,
     "drift": {
@@ -15,14 +15,21 @@
     "explainability": {
       "top_features_min": 2,
       "require_shap_artifact": true
+    },
+    "performance": {
+      "min_auroc": 0.75,
+      "min_auprc": 0.2
     }
   },
   "observed": {
     "max_psi": 0.0809945956450368,
     "max_ks": 0.0426601825565556,
+    "auroc": 1.0,
+    "auprc": 1.0,
+    "log_loss": 0.164252033486018,
+    "parity_gap": null,
     "shap_artifact_present": true,
-    "top_features_detected": null,
-    "parity_gap": 0.0202265632542721
+    "top_features_detected": null
   },
   "checks": [
     {
@@ -40,6 +47,27 @@
       "result": "PASS"
     },
     {
+      "name": "performance.auroc",
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 0.75,
+      "result": "PASS"
+    },
+    {
+      "name": "performance.auprc",
+      "value": 1.0,
+      "op": ">=",
+      "threshold": 0.2,
+      "result": "PASS"
+    },
+    {
+      "name": "fairness.parity_gap",
+      "value": null,
+      "op": "<=",
+      "threshold": 0.05,
+      "result": "SKIP"
+    },
+    {
       "name": "explainability.shap_artifact_present",
       "value": true,
       "op": "==",
@@ -52,13 +80,6 @@
       "op": ">=",
       "threshold": 2,
       "result": "SKIP"
-    },
-    {
-      "name": "fairness.parity_gap",
-      "value": 0.0202265632542721,
-      "op": "<=",
-      "threshold": 0.05,
-      "result": "PASS"
     }
   ],
   "notes": "Gate passed. All observed values within policy limits."
