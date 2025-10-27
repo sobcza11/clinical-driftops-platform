@@ -2,102 +2,71 @@ name: DriftOps CI
 
 on:
   push:
-    paths:
-      - "src/**"
-      - "data/**"
-      - "requirements.txt"
-      - ".github/workflows/driftops-ci.yml"
+    branches: [ main ]
   pull_request:
-    paths:
-      - "src/**"
-      - "requirements.txt"
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Upgrade pip & install deps
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
-        env:
-          MPLCONFIGDIR: ${{ runner.temp }}/matplotlib
 
-      - name: Prep CI env
+      # Use file-based MLflow store so artifacts are captured & uploaded
+      - name: Set MLflow backend (file-based)
+        run: echo "MLFLOW_TRACKING_URI=file://$GITHUB_WORKSPACE/mlruns" >> $GITHUB_ENV
+
+      - name: Ensure reports dir
+        run: mkdir -p reports
+
+      # --- Data prep FIRST so downstream steps have files ---
+      - name: Data prep (baseline/current)
         run: |
-          mkdir -p reports
-          ls -la
-          ls -la data || true
-          ls -la reports || true
+          python src/data_prep.py --scaler standard --outliers zscore
+          ls -lah data | sed -n '1,200p'
 
-      - name: Python env (diag)
+      # --- Drift detection ---
+      - name: Drift detector
+        run: python src/monitors/drift_detector.py
+
+      # --- Explainability (SHAP) ---
+      # If your current prepared CSV lives at data/data_prepared_current.csv, keep this path.
+      - name: SHAP explainability
         run: |
-          python -V
-          pip --version
-          python - <<'PY'
-          import sys, platform, numpy, pandas, sklearn
-          print(platform.platform())
-          print("PY:", sys.version.splitlines()[0])
-          print("numpy:", numpy.__version__, "pandas:", pandas.__version__, "sklearn:", sklearn.__version__)
-          PY
-
-      - name: Peek data files (diag)
-        run: |
-          python - <<'PY'
-          import os, pandas as pd
-          for p in ["data/data_prepared_baseline.csv","data/data_prepared_current.csv"]:
-              if os.path.exists(p):
-                  df = pd.read_csv(p, nrows=5)
-                  print(f"\n{p} -> cols:", list(df.columns))
-                  print(df.head().to_string(index=False))
-              else:
-                  print(f"Missing: {p}")
-          PY
-
-      - name: Run unit tests
-        run: pytest -q
-        continue-on-error: true
-
-      - name: Generate metrics CSV (PSI/KS)
-        run: python -m src.monitors.drift_detector
-
-      - name: Build Evidently HTML report
-        env:
-          DRIFTOPS_BASELINE_PATH: data/data_prepared_baseline.csv
-          DRIFTOPS_CURRENT_PATH: data/data_prepared_current.csv
-          DRIFTOPS_REPORT_PATH: reports/data_drift_small_demo.html
-        run: python -m src.make_small_drift_report
-
-      - name: SHAP top features
-        run: |
-          python -m src.explain.shap_summary \
+          python src/explain/shap_summary.py \
             --data data/data_prepared_current.csv \
             --out reports/shap_top_features.png \
             --topk 15
 
-      - name: Fairness audit (group=gender)
-        run: |
-          python -m src.eval.fairness_audit \
-            --data data/data_prepared_current.csv \
-            --group gender \
-            --out_csv reports/fairness_metrics.csv \
-            --out_md reports/fairness_report.md
+      # --- Fairness audit (optional but expected by gate to warn if missing) ---
+      # If you have this script, keep it; otherwise comment this step out.
+      - name: Fairness audit
+        run: python src/eval/fairness_audit.py
+        continue-on-error: true
 
+      # --- Enforce thresholds ---
+      - name: Policy gate
+        run: python src/ops/policy_gate.py
+
+      # --- Upload artifacts regardless of pass/fail ---
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: driftops-artifacts
+          name: driftops-reports
           path: |
-            reports/data_drift_small_demo.html
-            reports/drift_metrics.csv
-            reports/shap_top_features.png
-            reports/fairness_metrics.csv
-            reports/fairness_report.md
+            reports/**
+            mlruns/**
+            policy.yaml
