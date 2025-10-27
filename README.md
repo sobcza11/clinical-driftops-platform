@@ -2,12 +2,10 @@
 ![alt text](https://github.com/sobcza11/clinical-driftops-platform/blob/main/assets/driftOps_pic_h.png)
 
 <p align="center">
-
 [![DriftOps CI](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg)](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml)
 [![Click - Open the Dashboard](https://img.shields.io/badge/Open-Dashboard-success?style=for-the-badge&logo=github)](https://sobcza11.github.io/clinical-driftops-platform/)
 [![Dashboard](https://img.shields.io/badge/Dashboard-Live-success)](https://sobcza11.github.io/clinical-driftops-platform/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-/>
 </p>
 
 > **PMI-CPMAI Aligned • MLOps • Trustworthy AI • Explainable Healthcare Models**
