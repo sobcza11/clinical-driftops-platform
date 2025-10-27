@@ -7,6 +7,7 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Required for GitHub Pages
 permissions:
   contents: read
   pages: write
@@ -18,29 +19,30 @@ concurrency:
 
 jobs:
   build:
+    name: Build reports & upload
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Upgrade pip & install deps
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Set MLflow backend (file-based)
+      - name: Configure MLflow (file-based)
         run: echo "MLFLOW_TRACKING_URI=file://$GITHUB_WORKSPACE/mlruns" >> $GITHUB_ENV
 
       - name: Ensure reports dir
         run: mkdir -p reports
 
-      # ---- Seed predictions for CI (only if none present) ----
+      # --- Seed tiny predictions if missing (so perf section always shows) ---
       - name: Seed predictions if missing
         if: ${{ always() }}
         run: |
@@ -54,24 +56,22 @@ y_true,y_score
 CSV
           fi
 
-      # ---- Phase V — Performance metrics (AUROC/AUPRC) ----
-      # Run early and always, so later failures don't skip it
+      # --- Phase V: Performance metrics (AUROC/AUPRC) ---
       - name: Performance metrics
         if: ${{ always() }}
         run: python src/eval/performance_metrics.py
 
-      # -------- Phase III – Data Prep --------
-      - name: Data prep (baseline/current)
+      # --- Phase III: Data prep ---
+      - name: Data prep
         run: |
           python src/data_prep.py --scaler standard --outliers zscore
           ls -lah data | sed -n '1,200p'
 
-      # -------- Phase IV – Drift --------
+      # --- Phase IV: Drift ---
       - name: Drift detector
         run: python src/monitors/drift_detector.py
 
-      # -------- Phase V – SHAP --------
-      # (Leave as hard-fail to keep quality high)
+      # --- Phase V: SHAP ---
       - name: SHAP explainability
         run: |
           python src/explain/shap_summary.py \
@@ -79,35 +79,25 @@ CSV
             --out reports/shap_top_features.png \
             --topk 15
 
-      # -------- Phase V – Fairness (optional) --------
+      # --- Phase V: Fairness (optional) ---
       - name: Fairness audit
         run: python src/eval/fairness_audit.py
         continue-on-error: true
 
-      # -------- Phase V – Trustworthy Audit (optional) --------
+      # --- Phase V: Trustworthy Audit (optional) ---
       - name: Build trustworthy audit
         run: python src/eval/make_trustworthy_audit.py
         continue-on-error: true
 
-      # -------- Phase VI – Policy Gate (hard fail on violation) --------
+      # --- Phase VI: Policy gate (hard fail if violated) ---
       - name: Enforce policy gate
         run: python src/ops/policy_gate.py
 
-      # Always upload the gate JSON so we can inspect failures
-      - name: Upload policy gate result
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: policy_gate_result
-          path: reports/policy_gate_result.json
-          if-no-files-found: warn
-
-      # Build dashboard (always)
+      # --- Always build dashboard & upload artifacts (even on fail) ---
       - name: Build dashboard
         if: ${{ always() }}
         run: python src/reports_dashboard.py
 
-      # Collect artifacts even if earlier steps failed
       - name: Upload artifacts (zip)
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -120,7 +110,7 @@ CSV
           if-no-files-found: warn
           retention-days: 30
 
-      # Prepare Pages artifact (publishes /reports)
+      # --- Pages artifact (publishes ./reports) ---
       - name: Upload Pages artifact
         if: ${{ always() }}
         uses: actions/upload-pages-artifact@v3
@@ -128,6 +118,7 @@ CSV
           path: reports
 
   deploy:
+    # publish even if gate fails, so dashboard is visible
     if: ${{ always() }}
     needs: build
     runs-on: ubuntu-latest
@@ -139,5 +130,5 @@ CSV
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Echo site URL
+      - name: Echo Pages URL
         run: echo "PAGES_URL=${{ steps.deployment.outputs.page_url }}"
