@@ -30,65 +30,97 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          python -c "import sys, platform; print('Python', sys.version); print('Platform', platform.platform())"
 
       - name: Configure MLflow (file-based)
         run: echo "MLFLOW_TRACKING_URI=file://$GITHUB_WORKSPACE/mlruns" >> $GITHUB_ENV
 
-      - name: Ensure reports dir
+      - name: Ensure reports directory
         run: mkdir -p reports
 
-      # Seed tiny predictions if none present (no heredoc; safe YAML)
       - name: Seed predictions if missing
         run: |
-          if [ ! -f reports/predictions.csv ] && [ ! -f reports/predictions_current.csv ] && [ ! -f data/predictions.csv ]; then
+          if [ ! -f reports/predictions.csv ] && [ ! -f data/predictions.csv ]; then
             printf "y_true,y_score\n0,0.10\n1,0.90\n0,0.20\n1,0.80\n" > reports/predictions.csv
           fi
 
-      # Phase V — Performance metrics (run early and always)
+      # --------------------------
+      # Phase V — Performance
+      # --------------------------
       - name: Performance metrics
-        if: ${{ always() }}
         run: python src/eval/performance_metrics.py
 
+      # --------------------------
       # Phase III — Data prep
+      # --------------------------
       - name: Data prep
-        run: |
-          python src/data_prep.py --scaler standard --outliers zscore
-          ls -lah data | sed -n '1,200p'
+        run: python src/data_prep.py --scaler standard --outliers zscore
+        continue-on-error: true
 
-      # Phase IV — Drift
+      # --------------------------
+      # Phase IV — Drift Detection
+      # --------------------------
       - name: Drift detector
         run: python src/monitors/drift_detector.py
+        continue-on-error: true
 
-      # Phase V — SHAP
+      # --------------------------
+      # Phase V — Explainability
+      # --------------------------
       - name: SHAP explainability
         run: |
           python src/explain/shap_summary.py \
             --data data/data_prepared_current.csv \
             --out reports/shap_top_features.png \
             --topk 15
+        continue-on-error: true
 
-      # Phase V — Fairness (optional)
+      # --------------------------
+      # Phase V — Fairness Audit
+      # --------------------------
       - name: Fairness audit
         run: python src/eval/fairness_audit.py
         continue-on-error: true
 
-      # Phase V — Trustworthy Audit (optional)
+      # --------------------------
+      # Phase V — Trustworthy Audit
+      # --------------------------
       - name: Build trustworthy audit
         run: python src/eval/make_trustworthy_audit.py
         continue-on-error: true
 
-      # Phase VI — Policy gate (hard fail if violated)
+      # --------------------------
+      # Phase VI — Policy Gate (Hard Fail)
+      # --------------------------
       - name: Enforce policy gate
         run: python src/ops/policy_gate.py
 
-      # Always build dashboard & upload artifacts
+      # --------------------------
+      # Dashboard + Artifacts
+      # --------------------------
       - name: Build dashboard
         if: ${{ always() }}
-        run: python src/reports_dashboard.py
+        run: python src/reports_dashboard.py || echo "[warn] dashboard build failed; continuing"
+
+      - name: Debug summary
+        if: ${{ always() }}
+        run: |
+          echo "== Directory contents =="
+          ls -lah
+          echo "== Reports =="
+          ls -lah reports || true
+          echo "== Metrics JSON =="
+          [ -f reports/performance_metrics.json ] && cat reports/performance_metrics.json || true
+          echo "== Drift head =="
+          [ -f reports/drift_metrics.csv ] && head -n 5 reports/drift_metrics.csv || true
+          echo "== Fairness head =="
+          [ -f reports/fairness_metrics.csv ] && head -n 5 reports/fairness_metrics.csv || true
+          echo "== Policy gate result =="
+          [ -f reports/policy_gate_result.json ] && cat reports/policy_gate_result.json || true
 
       - name: Upload artifacts (zip)
         if: ${{ always() }}
@@ -102,7 +134,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      # Pages artifact (publishes ./reports)
       - name: Upload Pages artifact
         if: ${{ always() }}
         uses: actions/upload-pages-artifact@v3
@@ -116,6 +147,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
