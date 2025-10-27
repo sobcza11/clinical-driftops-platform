@@ -210,6 +210,40 @@ def main() -> int:
         "result": "SKIP" if observed["parity_gap"] is None else ("PASS" if observed["parity_gap"] <= gap_fail else "FAIL"),
     })
 
+    # --- Performance checks (optional) ---
+    perf_json = Path("reports/performance_metrics.json")
+    perf_obs = {}
+    if perf_json.exists():
+        try:
+            perf_obs = json.loads(perf_json.read_text(encoding="utf-8"))
+        except Exception:
+            perf_obs = {}
+
+    if perf_obs:
+        observed["auroc"] = perf_obs.get("auroc")
+        observed["auprc"] = perf_obs.get("auprc")
+        perf_cfg = policy.get("performance", {})
+        min_auroc = perf_cfg.get("min_auroc")
+        min_auprc = perf_cfg.get("min_auprc")
+
+        if min_auroc is not None:
+            checks.append({
+                "name": "performance.auroc",
+                "value": observed["auroc"],
+                "op": ">=",
+                "threshold": float(min_auroc),
+                "result": "SKIP" if observed["auroc"] is None else ("PASS" if float(observed["auroc"]) >= float(min_auroc) else "FAIL"),
+            })
+
+        if min_auprc is not None:
+            checks.append({
+                "name": "performance.auprc",
+                "value": observed["auprc"],
+                "op": ">=",
+                "threshold": float(min_auprc),
+                "result": "SKIP" if observed["auprc"] is None else ("PASS" if float(observed["auprc"]) >= float(min_auprc) else "FAIL"),
+            })
+
     # --- Decide final status ---
     any_fail = any(c["result"] == "FAIL" for c in checks)
     status = "FAIL" if any_fail else "PASS"

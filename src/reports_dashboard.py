@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json, base64
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timrezone
 
 import pandas as pd
 
@@ -54,7 +54,7 @@ def main() -> None:
     </style></head><body>
     """)
     html.append("<h1>🏥 Clinical DriftOps Dashboard</h1>")
-    html.append(f"<div class='meta'>Generated {datetime.utcnow().isoformat(timespec='seconds')} UTC</div>")
+    html.append(f"<div class='meta'>Generated {datetime.now(timezone.utc).isoformat(timespec=\"seconds\")} UTC</div>")
     html.append(f"<h2>Gate Status: <span class='{'pass' if status=='PASS' else 'fail'}'>{status}</span></h2>")
     html.append(f"<p><strong>Timestamp UTC:</strong> {ts}</p>")
 
@@ -77,6 +77,21 @@ def main() -> None:
     # Embed SHAP
     html.append("<h3>SHAP Top Features</h3>")
     html.append(embed_image(rpt / "shap_top_features.png"))
+
+    # Performance Metrics
+    perf_json = rpt / "performance_metrics.json"
+    if perf_json.exists():
+        try:
+            perf = json.loads(perf_json.read_text(encoding="utf-8"))
+            html.append("<h3>Performance Metrics</h3>")
+            rows = []
+            for k in ("auroc", "auprc", "accuracy", "n_samples", "status", "notes", "source"):
+                rows.append(f"<li>{k}: <b>{perf.get(k)}</b></li>")
+            html.append("<ul>" + "".join(rows) + "</ul>")
+        except Exception:
+            html.append("<h3>Performance Metrics</h3><p style='color:red;'>Error reading performance_metrics.json</p>")
+    else:
+        html.append("<h3>Performance Metrics</h3><p style='color:gray;'>Missing: performance_metrics.json</p>")
 
     # Trustworthy AI audit (markdown preview)
     audit_md = rpt / "trustworthy_ai_audit_v1.md"

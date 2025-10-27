@@ -14,3 +14,7 @@ fairness:
 explainability:
   top_features_min: 2
   require_shap_artifact: true
+
+performance:
+  min_auroc: 0.75
+  min_auprc: 0.20
