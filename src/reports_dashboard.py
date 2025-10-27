@@ -54,7 +54,9 @@ def main() -> None:
     </style></head><body>
     """)
     html.append("<h1>🏥 Clinical DriftOps Dashboard</h1>")
-    html.append(f"<div class='meta'>Generated {datetime.now(timezone.utc).isoformat(timespec=\"seconds\")} UTC</div>")
+    from datetime import datetime, timezone
+
+    html.append(f"<div class='meta'>Generated {datetime.now(timezone.utc).isoformat(timespec='seconds')} UTC</div>")
     html.append(f"<h2>Gate Status: <span class='{'pass' if status=='PASS' else 'fail'}'>{status}</span></h2>")
     html.append(f"<p><strong>Timestamp UTC:</strong> {ts}</p>")
 
