@@ -1,0 +1,16 @@
+# clinical-driftops-platform/policy_registry.yaml
+registry_version: 1
+policies:
+  - id: default
+    file: policy.yaml
+    version: 1.0.0
+    owner: "Rand Sobczak Jr"
+    last_review: "2025-10-29"
+    notes: "Baseline thresholds for Phase V/VI. PSI/KS drift, perf, fairness, explainability."
+    schema_version: 1
+    active: true
+history:
+  - id: default
+    version: 0.9.0
+    last_review: "2025-10-20"
+    notes: "Pre-Phase V thresholds; proto."
