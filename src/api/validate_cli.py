@@ -1,3 +1,19 @@
+# src/api/validate_cli.py
+# Purpose: End-to-end validation orchestrator for Clinical DriftOps.
+# Guarantees artifacts in reports/:
+#   - performance_metrics.json
+#   - performance_metrics.csv
+#   - api_fairness_metrics.csv
+#   - api_fairness_report.md
+#   - fairness_summary.json
+#   - policy_gate_result.json
+#   - shap_top_features.json   <-- added
+#   - live_validation.json     (status strictly PASS/FAIL)
+#
+# Exit codes (for CLI usage; CI treats FAIL as non-fatal):
+#   0 => PASS
+#   1 => FAIL or unexpected error
+
 from __future__ import annotations
 
 import argparse
@@ -7,16 +23,21 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-# Local imports
+# Local imports (made reliable in CI by src/__init__.py + PYTHONPATH)
 try:
     from src.eval import performance_metrics
 except Exception:
-    performance_metrics = None  # handled gracefully
+    performance_metrics = None
 
 try:
     from src.ops import policy_gate as policy_gate_mod
 except Exception:
-    policy_gate_mod = None  # fallback stub
+    policy_gate_mod = None
+
+try:
+    from src.explain import shap_stub
+except Exception:
+    shap_stub = None
 
 REPORTS_DIR = Path("reports")
 
@@ -37,7 +58,6 @@ def _write_csv_kv(path: Path, mapping: Dict[str, Any]) -> None:
             w.writerow([k, v if v is not None else ""])
 
 def _safe_performance(preds_path: str) -> Dict[str, Any]:
-    """Compute metrics if possible, but always emit artifacts."""
     perf_json = REPORTS_DIR / "performance_metrics.json"
     perf_csv  = REPORTS_DIR / "performance_metrics.csv"
 
@@ -59,7 +79,6 @@ def _safe_performance(preds_path: str) -> Dict[str, Any]:
     return json.loads(perf_json.read_text(encoding="utf-8"))
 
 def _ensure_fairness_placeholders() -> Dict[str, Any]:
-    """Create minimal fairness artifacts if absent."""
     fair_csv  = REPORTS_DIR / "api_fairness_metrics.csv"
     fair_md   = REPORTS_DIR / "api_fairness_report.md"
     fair_json = REPORTS_DIR / "fairness_summary.json"
@@ -108,11 +127,28 @@ def _run_policy_gate(perf: Dict[str, Any]) -> Dict[str, Any]:
     _write_json(gate_json, stub)
     return stub
 
+def _ensure_shap_placeholder() -> str | None:
+    """Always produce a SHAP-like artifact for the dashboard."""
+    try:
+        if shap_stub is None or not hasattr(shap_stub, "main"):
+            raise RuntimeError("shap_stub.main unavailable")
+        return shap_stub.main(out_dir=str(REPORTS_DIR))
+    except Exception as e:
+        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "shap", "error": repr(e)})
+        # Best-effort fallback to a trivial payload
+        fallback = REPORTS_DIR / "shap_top_features.json"
+        if not fallback.exists():
+            _write_json(fallback, {
+                "features": [{"name": "placeholder_feature", "mean_abs_impact": 0.0}],
+                "note": "Fallback SHAP placeholder due to error."
+            })
+        return str(fallback)
+
 def run(args: argparse.Namespace) -> int:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    exit_code = 1  # default to FAIL so tests accept on gate-fail or error
-    live_status = "FAIL"  # tests expect PASS/FAIL
+    exit_code = 1  # default FAIL
+    live_status = "FAIL"
     performance: Dict[str, Any] = {}
     fairness: Dict[str, Any] = {}
     gate: Dict[str, Any] = {}
@@ -120,9 +156,9 @@ def run(args: argparse.Namespace) -> int:
     try:
         performance = _safe_performance(args.preds)
         fairness = _ensure_fairness_placeholders()
+        _ensure_shap_placeholder()  # <-- added
         gate = _run_policy_gate(performance)
 
-        # Normalize any gate result to PASS/FAIL for LIVE payload
         gate_status = str(gate.get("status", "")).upper()
         if gate_status == "PASS":
             live_status = "PASS"
@@ -137,7 +173,7 @@ def run(args: argparse.Namespace) -> int:
         _write_json(REPORTS_DIR / "validator_error.json", {"stage": "validator", "error": repr(e)})
     finally:
         _write_json(REPORTS_DIR / "live_validation.json", {
-            "status": live_status,   # <- strictly PASS/FAIL
+            "status": live_status,
             "performance": performance,
             "gate": gate,
         })
@@ -152,5 +188,6 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
 
 
