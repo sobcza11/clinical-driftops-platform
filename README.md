@@ -16,6 +16,14 @@
   </a>
 </p>
 
+---
+
+**Live Dashboard:** https://sobcza11.github.io/clinical-driftops-platform/  
+**Status:** [![DriftOps CI](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg)](https://github.com/sobcza11/clinical-driftops-platform/actions)
+
+Governance-first MLOps framework ensuring transparent, auditable, and
+policy-as-code validation for clinical AI models.
+
 > **PMI-CPMAI Aligned • MLOps • Trustworthy AI • Explainable Healthcare Models**
 
 ---
