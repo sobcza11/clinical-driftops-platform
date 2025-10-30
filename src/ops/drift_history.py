@@ -1,323 +1,63 @@
-# src/api/validate_cli.py
-# Purpose: End-to-end validation orchestrator for Clinical DriftOps.
-# Guarantees artifacts in reports/:
-#   - performance_metrics.json / .csv
-#   - api_fairness_metrics.csv / api_fairness_report.md
-#   - fairness_summary.json
-#   - shap_top_features.json
-#   - policy_gate_result.json
-#   - live_validation.json
-#   - regulatory_monitor.json
-#   - run_metadata.json
-#   - policy_registry_summary.json
-#   - evidence_digest.json
-#   - drift_history.json
+# src/ops/drift_history.py
+# Purpose: Maintain a rolling history of key validation metrics across runs.
+# Output: reports/drift_history.json (list of records)
 
 from __future__ import annotations
-
-import argparse
-import csv
-import json
-import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Dict, Any, List
+import json
+import os
+from datetime import datetime, timezone
 
-# -----------------------
-# Local Imports (tolerant)
-# -----------------------
-try:
-    from src.eval import performance_metrics
-except Exception:
-    performance_metrics = None
+REPORTS = Path("reports")
+HISTORY_FILE = REPORTS / "drift_history.json"
+MAX_RECORDS = 200  # rolling window
 
-try:
-    from src.ops import policy_gate as policy_gate_mod
-except Exception:
-    policy_gate_mod = None
-
-try:
-    from src.explain import shap_stub
-except Exception:
-    shap_stub = None
-
-try:
-    from src.ops import regulatory_monitor
-except Exception:
-    regulatory_monitor = None
-
-try:
-    from src.ops import run_metadata
-except Exception:
-    run_metadata = None
-
-try:
-    from src.ops import policy_registry_view
-except Exception:
-    policy_registry_view = None
-
-try:
-    from src.ops import evidence_digest
-except Exception:
-    evidence_digest = None
-
-try:
-    from src.ops import drift_history
-except Exception:
-    drift_history = None
-
-
-REPORTS_DIR = Path("reports")
-
-
-# -----------------------
-# Utility Writers
-# -----------------------
-def _write_text(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
-
-
-def _write_json(path: Path, payload: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-
-
-def _write_csv_kv(path: Path, mapping: Dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="\n") as f:
-        w = csv.writer(f)
-        w.writerow(["metric", "value"])
-        for k, v in mapping.items():
-            w.writerow([k, v if v is not None else ""])
-
-
-# -----------------------
-# Safe performance metrics
-# -----------------------
-def _safe_performance(preds_path: str) -> Dict[str, Any]:
-    perf_json = REPORTS_DIR / "performance_metrics.json"
-    perf_csv = REPORTS_DIR / "performance_metrics.csv"
-
-    metrics: Dict[str, Any] = {"n": 0, "accuracy@0.5": None, "auroc": None, "ks_stat": None}
+def _read_json(path: Path):
     try:
-        if performance_metrics is None or not hasattr(performance_metrics, "main"):
-            raise RuntimeError("performance_metrics.main unavailable")
-        computed = performance_metrics.main(preds_path, str(REPORTS_DIR))
-        if isinstance(computed, dict):
-            metrics.update(computed)
-    except Exception as e:
-        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "metrics", "error": repr(e)})
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return [] if path == HISTORY_FILE else {}
 
-    if not perf_json.exists():
-        _write_json(perf_json, metrics)
-    if not perf_csv.exists():
-        _write_csv_kv(perf_csv, metrics)
+def _iso_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    return json.loads(perf_json.read_text(encoding="utf-8"))
+def main(out_dir: str = "reports") -> str:
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
 
+    live = _read_json(out / "live_validation.json") or {}
+    perf = _read_json(out / "performance_metrics.json") or {}
+    gate = _read_json(out / "policy_gate_result.json") or {}
 
-# -----------------------
-# Fairness placeholders
-# -----------------------
-def _ensure_fairness_placeholders() -> Dict[str, Any]:
-    fair_csv = REPORTS_DIR / "api_fairness_metrics.csv"
-    fair_md = REPORTS_DIR / "api_fairness_report.md"
-    fair_json = REPORTS_DIR / "fairness_summary.json"
+    record = {
+        "ts": _iso_now(),
+        "status": (live.get("status") or "").upper(),
+        "auroc": perf.get("auroc"),
+        "ks_stat": perf.get("ks_stat"),
+        "min_auroc": (gate.get("policy") or {}).get("min_auroc"),
+        "min_ks": (gate.get("policy") or {}).get("min_ks"),
+        "reasons": gate.get("reasons", []),
+        "ci": {
+            "run_id": os.environ.get("GITHUB_RUN_ID"),
+            "run_number": os.environ.get("GITHUB_RUN_NUMBER"),
+            "repo": os.environ.get("GITHUB_REPOSITORY"),
+            "sha": os.environ.get("GITHUB_SHA"),
+            "ref": os.environ.get("GITHUB_REF"),
+        },
+    }
 
-    if not fair_csv.exists():
-        with fair_csv.open("w", encoding="utf-8", newline="\n") as f:
-            w = csv.writer(f)
-            w.writerow(["slice", "metric", "value"])
-            w.writerow(["overall", "demographic_parity_ratio", "1.0"])
+    history = _read_json(HISTORY_FILE)
+    if not isinstance(history, list):
+        history = []
 
-    if not fair_md.exists():
-        _write_text(
-            fair_md,
-            "# Fairness Report\n\n"
-            "_Placeholder generated by validator._\n\n"
-            "- Slices: overall\n- Metrics: demographic_parity_ratio\n",
-        )
+    history.append(record)
+    if len(history) > MAX_RECORDS:
+        history = history[-MAX_RECORDS:]
 
-    if not fair_json.exists():
-        _write_json(
-            fair_json,
-            {
-                "slices": ["overall"],
-                "metrics": {"overall": {"demographic_parity_ratio": 1.0}},
-                "note": "Placeholder fairness summary generated by validator.",
-            },
-        )
-
-    return json.loads(fair_json.read_text(encoding="utf-8"))
-
-
-# -----------------------
-# Policy Gate
-# -----------------------
-def _run_policy_gate(perf: Dict[str, Any]) -> Dict[str, Any]:
-    gate_json = REPORTS_DIR / "policy_gate_result.json"
-
-    try:
-        if policy_gate_mod is None or not hasattr(policy_gate_mod, "main"):
-            raise RuntimeError("policy_gate.main unavailable")
-        result = policy_gate_mod.main(out_dir=str(REPORTS_DIR), performance=perf)
-        if isinstance(result, dict):
-            if not gate_json.exists():
-                _write_json(gate_json, result)
-            return result
-    except Exception as e:
-        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "gate", "error": repr(e)})
-
-    stub = {"status": "FAIL", "reasons": ["Gate unavailable or error; failing closed."], "policy": "default"}
-    _write_json(gate_json, stub)
-    return stub
-
-
-# -----------------------
-# SHAP placeholder
-# -----------------------
-def _ensure_shap_placeholder() -> None:
-    try:
-        if shap_stub is None or not hasattr(shap_stub, "main"):
-            raise RuntimeError("shap_stub.main unavailable")
-        shap_stub.main(out_dir=str(REPORTS_DIR))
-    except Exception as e:
-        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "shap", "error": repr(e)})
-        fallback = REPORTS_DIR / "shap_top_features.json"
-        if not fallback.exists():
-            _write_json(
-                fallback,
-                {
-                    "features": [{"name": "placeholder_feature", "mean_abs_impact": 0.0}],
-                    "note": "Fallback SHAP placeholder due to error.",
-                },
-            )
-
-
-# -----------------------
-# Regulatory / Metadata
-# -----------------------
-def _emit_regulatory_monitor() -> None:
-    try:
-        if regulatory_monitor is None or not hasattr(regulatory_monitor, "main"):
-            raise RuntimeError("regulatory_monitor.main unavailable")
-        regulatory_monitor.main(out_dir=str(REPORTS_DIR))
-    except Exception as e:
-        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "regulatory_monitor", "error": repr(e)})
-
-
-def _emit_run_metadata() -> None:
-    try:
-        if run_metadata is None or not hasattr(run_metadata, "main"):
-            raise RuntimeError("run_metadata.main unavailable")
-        run_metadata.main(out_dir=str(REPORTS_DIR))
-    except Exception as e:
-        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "run_metadata", "error": repr(e)})
-
-
-# -----------------------
-# Main orchestration
-# -----------------------
-def run(args: argparse.Namespace) -> int:
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-
-    exit_code = 1
-    live_status = "FAIL"
-    performance: Dict[str, Any] = {}
-    fairness: Dict[str, Any] = {}
-    gate: Dict[str, Any] = {}
-
-    try:
-        performance = _safe_performance(args.preds)
-        fairness = _ensure_fairness_placeholders()
-        _ensure_shap_placeholder()
-        gate = _run_policy_gate(performance)
-
-        gate_status = str(gate.get("status", "")).upper()
-        if gate_status == "PASS":
-            live_status = "PASS"
-            exit_code = 0
-        else:
-            live_status = "FAIL"
-            exit_code = 1
-
-        # Write live JSON first (so governance modules detect presence)
-        _write_json(
-            REPORTS_DIR / "live_validation.json",
-            {"status": live_status, "performance": performance, "gate": gate},
-        )
-
-        # Governance artifacts
-        _emit_regulatory_monitor()
-        _emit_run_metadata()
-
-        # Policy Registry Summary
-        try:
-            if policy_registry_view is None or not hasattr(policy_registry_view, "main"):
-                raise RuntimeError("policy_registry_view.main unavailable")
-            policy_registry_view.main(out_dir=str(REPORTS_DIR))
-        except Exception as e:
-            _write_json(
-                REPORTS_DIR / "validator_error.json",
-                {"stage": "policy_registry_view", "error": repr(e)},
-            )
-
-        # Evidence Digest (SHA256 of artifacts)
-        try:
-            if evidence_digest is None or not hasattr(evidence_digest, "main"):
-                raise RuntimeError("evidence_digest.main unavailable")
-            evidence_digest.main(out_dir=str(REPORTS_DIR))
-        except Exception as e:
-            _write_json(REPORTS_DIR / "validator_error.json", {"stage": "evidence_digest", "error": repr(e)})
-
-        # Drift History (append this run)
-        try:
-            if drift_history is None or not hasattr(drift_history, "main"):
-                raise RuntimeError("drift_history.main unavailable")
-            drift_history.main(out_dir=str(REPORTS_DIR))
-        except Exception as e:
-            _write_json(REPORTS_DIR / "validator_error.json", {"stage": "drift_history", "error": repr(e)})
-
-    except Exception as e:
-        live_status = "FAIL"
-        exit_code = 1
-        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "validator", "error": repr(e)})
-
-        # Fallback minimal live payload
-        _write_json(
-            REPORTS_DIR / "live_validation.json",
-            {"status": live_status, "performance": performance, "gate": gate},
-        )
-
-        # Best-effort governance snapshot
-        _emit_regulatory_monitor()
-        _emit_run_metadata()
-
-        try:
-            if policy_registry_view is not None and hasattr(policy_registry_view, "main"):
-                policy_registry_view.main(out_dir=str(REPORTS_DIR))
-        except Exception:
-            pass
-        try:
-            if evidence_digest is not None and hasattr(evidence_digest, "main"):
-                evidence_digest.main(out_dir=str(REPORTS_DIR))
-        except Exception:
-            pass
-        try:
-            if drift_history is not None and hasattr(drift_history, "main"):
-                drift_history.main(out_dir=str(REPORTS_DIR))
-        except Exception:
-            pass
-
-    return exit_code
-
-
-def main() -> int:
-    ap = argparse.ArgumentParser(description="Clinical DriftOps Validator CLI")
-    ap.add_argument("--preds", required=True, help="Path to predictions CSV (e.g., reports/predictions.csv)")
-    args = ap.parse_args()
-    return run(args)
-
+    HISTORY_FILE.write_text(json.dumps(history, indent=2), encoding="utf-8")
+    return str(HISTORY_FILE)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    print(main())
+
