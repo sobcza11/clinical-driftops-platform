@@ -1,15 +1,26 @@
 version: 1
 
 drift:
-  # PSI (Population Stability Index)
   psi_warn: 0.10
   psi_fail: 0.20
-  # KS (Kolmogorov–Smirnov)
-  ks_warn:  0.10
-  ks_fail:  0.20
+  ks_warn: 0.10
+  ks_fail: 0.20
+  # Columns to ignore when computing drift (IDs, timestamps, labels, etc.)
+  ignore_cols:
+    - subject_id
+    - hadm_id
+    - itemid
+    - stay_id
+    - label
+    - y_true
+    - y_pred
+    - y_score
+    - admittime
+    - dischtime
+    - charttime
 
 fairness:
-  parity_gap_fail: 0.05      # max allowed group disparity
+  parity_gap_fail: 0.05  # larger gap fails
 
 explainability:
   top_features_min: 2
@@ -18,3 +29,6 @@ explainability:
 performance:
   min_auroc: 0.75
   min_auprc: 0.20
+
+
+

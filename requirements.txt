@@ -11,13 +11,15 @@
 # PyYAML==6.0.2
 
 
-numpy==1.26.4
-pandas==2.2.2
-scikit-learn==1.4.2
+numpy>=1.24.0
+pandas==2.0.0
+scikit-learn>=1.2.0
 matplotlib==3.8.4
 shap==0.44.1
 mlflow>=2.8
-pyyaml>=6.0
+pyyaml>=6.0.0
 jsonschema>=4.22
-
-
+Pillow>=10
+fastapi>=0.115
+uvicorn>=0.30
+scipy>=1.10.0

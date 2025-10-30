@@ -1,159 +1,184 @@
-# -*- coding: utf-8 -*-
-"""
-Compute classification performance metrics from a predictions CSV and emit JSON/CSV.
-Expected columns: y_true, y_score  (optionally y_pred; otherwise we derive thresholds)
-Outputs:
-  reports/performance_metrics.json
-  reports/performance_metrics.csv
-"""
+# src/eval/performance_metrics.py
+# Purpose: Compute core performance metrics from a predictions CSV and write JSON/CSV artifacts.
+# Contract:
+#   - main(preds_path: str, out_dir: str) -> dict
+#   - Writes {out_dir}/performance_metrics.json and {out_dir}/performance_metrics.csv (UTF-8, LF)
 
 from __future__ import annotations
+
+import csv
 import json
-import sys
-import math
 from pathlib import Path
+from typing import Dict, List, Tuple, Optional
 
-import numpy as np
-import pandas as pd
-from sklearn.metrics import (
-    roc_auc_score,
-    average_precision_score,
-    log_loss,
-    precision_recall_fscore_support,
-    accuracy_score,
-)
+# Accept multiple common aliases to be resilient to upstream schema changes
+PROB_ALIASES = {
+    "y_pred_prob", "pred_prob", "prob", "score", "prediction", "y_proba",
+    "proba", "p_hat", "p", "predicted_probability",
+}
+LABEL_ALIASES = {"y_true", "label", "target", "y", "y_actual", "actual", "truth"}
 
-POSSIBLE_INPUTS = [
-    Path("reports/predictions.csv"),
-    Path("reports/predictions_current.csv"),
-    Path("data/predictions.csv"),
-]
+def _read_predictions(preds_path: Path) -> Tuple[List[Optional[float]], List[float]]:
+    """
+    Reads a predictions CSV with headers and tries to locate:
+      - a probability/score column (float, required)
+      - an optional binary label column {0,1}
+    """
+    if not preds_path.exists():
+        raise FileNotFoundError(f"Predictions file does not exist: {preds_path}")
 
-OUT_DIR = Path("reports")
-JSON_OUT = OUT_DIR / "performance_metrics.json"
-CSV_OUT  = OUT_DIR / "performance_metrics.csv"
+    with preds_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        headers = {h.strip(): h for h in (reader.fieldnames or [])}
 
-def _find_input() -> Path:
-    for p in POSSIBLE_INPUTS:
-        if p.exists():
-            return p
-    raise FileNotFoundError(
-        f"No predictions file found. Looked for: {', '.join(map(str, POSSIBLE_INPUTS))}"
-    )
+        # Find columns by alias (case-insensitive)
+        def _match(colset: set[str]) -> Optional[str]:
+            for raw in headers:
+                if raw.strip().lower() in colset:
+                    return headers[raw]
+            return None
 
-def _safe_float_series(s: pd.Series) -> pd.Series:
-    return pd.to_numeric(s, errors="coerce")
+        prob_col = _match({a.lower() for a in PROB_ALIASES})
+        if not prob_col:
+            raise ValueError(
+                f"Missing probability column; expected one of {sorted(PROB_ALIASES)}; "
+                f"got headers: {list(headers)}"
+            )
+        label_col = _match({a.lower() for a in LABEL_ALIASES})
 
-def _clip_probs(arr: np.ndarray) -> np.ndarray:
-    # avoid log-loss blowing up with exactly 0/1
-    eps = 1e-15
-    return np.clip(arr, eps, 1 - eps)
+        y_true: List[Optional[float]] = []
+        y_prob: List[float] = []
+        for row in reader:
+            try:
+                p = float(row[prob_col])
+            except Exception:
+                # Skip rows with unparsable probability
+                continue
+            y_prob.append(p)
 
-def _threshold_metrics(y_true, y_score, thr: float):
-    y_pred = (y_score >= thr).astype(int)
-    acc = accuracy_score(y_true, y_pred)
-    prec, rec, f1, _ = precision_recall_fscore_support(
-        y_true, y_pred, average="binary", zero_division=0
-    )
-    return {
-        "threshold": float(thr),
-        "accuracy": float(acc),
-        "precision": float(prec),
-        "recall": float(rec),
-        "f1": float(f1),
+            if label_col:
+                v = row.get(label_col, None)
+                if v is None or v == "":
+                    y_true.append(None)
+                else:
+                    try:
+                        y_true.append(float(v))
+                    except Exception:
+                        y_true.append(None)
+            else:
+                y_true.append(None)
+
+    return y_true, y_prob
+
+
+def _accuracy(y_true: List[Optional[float]], y_prob: List[float], threshold: float = 0.5) -> Optional[float]:
+    labeled = [(yt, yp) for yt, yp in zip(y_true, y_prob) if yt is not None]
+    if not labeled:
+        return None
+    correct = sum(1.0 for yt, yp in labeled if (yp >= threshold) == (yt >= 0.5))
+    return correct / len(labeled)
+
+
+def _roc_auc(y_true: List[Optional[float]], y_prob: List[float]) -> Optional[float]:
+    """Label-free AUROC via Mann–Whitney U ranks; returns None if class missing."""
+    labeled = [(yt, yp) for yt, yp in zip(y_true, y_prob) if yt is not None]
+    if not labeled:
+        return None
+    pos = [yp for yt, yp in labeled if yt >= 0.5]
+    neg = [yp for yt, yp in labeled if yt < 0.5]
+    if len(pos) == 0 or len(neg) == 0:
+        return None
+
+    all_scores = sorted([(s, 1) for s in pos] + [(s, 0) for s in neg], key=lambda x: x[0])
+    ranks: List[float] = [0.0] * len(all_scores)
+
+    i = 0
+    while i < len(all_scores):
+        j = i
+        while j + 1 < len(all_scores) and all_scores[j + 1][0] == all_scores[i][0]:
+            j += 1
+        avg_rank = (i + j + 2) / 2.0  # 1-based
+        for k in range(i, j + 1):
+            ranks[k] = avg_rank
+        i = j + 1
+
+    rank_sum_pos = sum(r for (r, (_, lbl)) in zip(ranks, all_scores) if lbl == 1)
+    n_pos = len(pos)
+    n_neg = len(neg)
+    auc = (rank_sum_pos - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+    return auc
+
+
+def _ks_stat(y_true: List[Optional[float]], y_prob: List[float]) -> Optional[float]:
+    """KS statistic between positive & negative score distributions."""
+    labeled = [(yt, yp) for yt, yp in zip(y_true, y_prob) if yt is not None]
+    if not labeled:
+        return None
+    pos = sorted([yp for yt, yp in labeled if yt >= 0.5])
+    neg = sorted([yp for yt, yp in labeled if yt < 0.5])
+    if len(pos) == 0 or len(neg) == 0:
+        return None
+
+    i = j = 0
+    n_pos, n_neg = len(pos), len(neg)
+    ks = 0.0
+    values = sorted(set(pos + neg))
+    for v in values:
+        while i < n_pos and pos[i] <= v:
+            i += 1
+        while j < n_neg and neg[j] <= v:
+            j += 1
+        cdf_pos = i / n_pos
+        cdf_neg = j / n_neg
+        ks = max(ks, abs(cdf_pos - cdf_neg))
+    return ks
+
+
+def _round_or_none(x: Optional[float], ndigits: int = 6) -> Optional[float]:
+    return None if x is None else round(float(x), ndigits)
+
+
+def _write_json(path: Path, payload: Dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _write_csv(path: Path, payload: Dict[str, Optional[float]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        w = csv.writer(f)
+        w.writerow(["metric", "value"])
+        for k, v in payload.items():
+            w.writerow([k, "" if v is None else v])
+
+
+def main(preds_path: str, out_dir: str) -> Dict[str, Optional[float]]:
+    """Public entrypoint: compute + persist metrics; return metrics dict."""
+    preds_p = Path(preds_path)
+    out_p = Path(out_dir)
+    out_p.mkdir(parents=True, exist_ok=True)
+
+    y_true, y_prob = _read_predictions(preds_p)
+
+    metrics: Dict[str, Optional[float]] = {
+        "n": len(y_prob),
+        "accuracy@0.5": _round_or_none(_accuracy(y_true, y_prob, threshold=0.5)),
+        "auroc": _round_or_none(_roc_auc(y_true, y_prob)),
+        "ks_stat": _round_or_none(_ks_stat(y_true, y_prob)),
     }
 
-def _best_f1_threshold(y_true, y_score):
-    # scan thresholds at unique scores + 0.5 to be safe on tiny samples
-    uniq = np.unique(y_score)
-    cands = np.unique(np.concatenate([uniq, np.array([0.5])]))
-    best = (-1.0, 0.5, {})  # f1, thr, metrics
-    for thr in cands:
-        m = _threshold_metrics(y_true, y_score, float(thr))
-        if m["f1"] > best[0]:
-            best = (m["f1"], float(thr), m)
-    return best[1], best[2]
+    _write_json(out_p / "performance_metrics.json", metrics)
+    _write_csv(out_p / "performance_metrics.csv", metrics)
 
-def main():
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    pred_path = _find_input()
+    return metrics
 
-    df = pd.read_csv(pred_path)
-    cols = [c.lower() for c in df.columns]
-    rename_map = {old: old.lower() for old in df.columns}
-    df = df.rename(columns=rename_map)
-
-    if "y_true" not in df.columns or "y_score" not in df.columns:
-        raise ValueError(
-            f"Input {pred_path} must contain columns y_true, y_score (found: {list(df.columns)})"
-        )
-
-    y_true = _safe_float_series(df["y_true"]).astype(int).to_numpy()
-    y_score = _safe_float_series(df["y_score"]).astype(float).to_numpy()
-
-    # Basic sanity
-    if len(y_true) == 0 or len(y_score) == 0 or len(y_true) != len(y_score):
-        raise ValueError("Invalid predictions: empty or length mismatch for y_true/y_score.")
-
-    # Core metrics
-    metrics = {}
-    try:
-        metrics["auroc"] = float(roc_auc_score(y_true, y_score))
-    except Exception:
-        metrics["auroc"] = float("nan")
-
-    try:
-        metrics["auprc"] = float(average_precision_score(y_true, y_score))
-    except Exception:
-        metrics["auprc"] = float("nan")
-
-    # Log loss (only when probabilities look valid)
-    probs = _clip_probs(y_score.copy())
-    try:
-        metrics["log_loss"] = float(log_loss(y_true, probs))
-    except Exception:
-        metrics["log_loss"] = float("nan")
-
-    # Thresholded metrics
-    # 0.5
-    t05 = _threshold_metrics(y_true, y_score, 0.5)
-    # best F1
-    best_thr, best_m = _best_f1_threshold(y_true, y_score)
-
-    # Flatten for CSV/JSON
-    flat = {
-        "n_samples": int(len(y_true)),
-        "positive_rate": float(np.mean(y_true)),
-        "auroc": metrics["auroc"],
-        "auprc": metrics["auprc"],
-        "log_loss": metrics["log_loss"],
-        "acc@0.5": t05["accuracy"],
-        "prec@0.5": t05["precision"],
-        "recall@0.5": t05["recall"],
-        "f1@0.5": t05["f1"],
-        "best_f1_threshold": best_thr,
-        "acc@bestF1": best_m["accuracy"],
-        "prec@bestF1": best_m["precision"],
-        "recall@bestF1": best_m["recall"],
-        "f1@bestF1": best_m["f1"],
-        "source_file": str(pred_path),
-    }
-
-    # Write JSON
-    with open(JSON_OUT, "w", encoding="utf-8") as f:
-        json.dump(flat, f, indent=2)
-
-    # Write CSV (one-row CSV to be easy to read & plot later)
-    pd.DataFrame([flat]).to_csv(CSV_OUT, index=False)
-
-    # Console summary for Actions log
-    print("== Performance Metrics ==")
-    for k in ["n_samples", "positive_rate", "auroc", "auprc", "log_loss", "f1@0.5", "f1@bestF1", "best_f1_threshold"]:
-        print(f"{k}: {flat[k]}")
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"[performance_metrics] ERROR: {e}", file=sys.stderr)
-        sys.exit(1)
+    import argparse
+    ap = argparse.ArgumentParser(description="Compute performance metrics and write artifacts.")
+    ap.add_argument("--preds", required=True, help="Path to predictions CSV")
+    ap.add_argument("--out", default="reports", help="Output directory (default: reports)")
+    args = ap.parse_args()
+    result = main(args.preds, args.out)
+    print(json.dumps(result, indent=2))
+

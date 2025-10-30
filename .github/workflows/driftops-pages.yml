@@ -1,4 +1,4 @@
-# .github/workflows/driftops-pages.yml
+﻿# .github/workflows/driftops-pages.yml
 name: DriftOps Pages
 
 on:
@@ -37,4 +37,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
