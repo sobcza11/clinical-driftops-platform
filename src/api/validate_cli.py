@@ -8,9 +8,9 @@
 #   - fairness_summary.json
 #   - policy_gate_result.json
 #   - shap_top_features.json
-#   - regulatory_monitor.json        <-- NEW
-#   - run_metadata.json              <-- NEW
-#   - live_validation.json           (status strictly PASS/FAIL)
+#   - regulatory_monitor.json
+#   - run_metadata.json
+#   - live_validation.json (status strictly PASS/FAIL)
 
 from __future__ import annotations
 
@@ -131,11 +131,11 @@ def _run_policy_gate(perf: Dict[str, Any]) -> Dict[str, Any]:
     _write_json(gate_json, stub)
     return stub
 
-def _ensure_shap_placeholder() -> str | None:
+def _ensure_shap_placeholder() -> None:
     try:
         if shap_stub is None or not hasattr(shap_stub, "main"):
             raise RuntimeError("shap_stub.main unavailable")
-        return shap_stub.main(out_dir=str(REPORTS_DIR))
+        shap_stub.main(out_dir=str(REPORTS_DIR))
     except Exception as e:
         _write_json(REPORTS_DIR / "validator_error.json", {"stage": "shap", "error": repr(e)})
         fallback = REPORTS_DIR / "shap_top_features.json"
@@ -144,7 +144,6 @@ def _ensure_shap_placeholder() -> str | None:
                 "features": [{"name": "placeholder_feature", "mean_abs_impact": 0.0}],
                 "note": "Fallback SHAP placeholder due to error."
             })
-        return str(fallback)
 
 def _emit_regulatory_monitor() -> None:
     try:
@@ -177,10 +176,6 @@ def run(args: argparse.Namespace) -> int:
         _ensure_shap_placeholder()
         gate = _run_policy_gate(performance)
 
-        # NEW: governance & links
-        _emit_regulatory_monitor()
-        _emit_run_metadata()
-
         gate_status = str(gate.get("status", "")).upper()
         if gate_status == "PASS":
             live_status = "PASS"
@@ -188,16 +183,33 @@ def run(args: argparse.Namespace) -> int:
         else:
             live_status = "FAIL"
             exit_code = 1
-    except Exception as e:
-        live_status = "FAIL"
-        exit_code = 1
-        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "validator", "error": repr(e)})
-    finally:
+
+        # 🔁 Write live JSON first, so downstream monitors see it
         _write_json(REPORTS_DIR / "live_validation.json", {
             "status": live_status,
             "performance": performance,
             "gate": gate,
         })
+
+        # 🧭 Then emit governance & run metadata (they now see live_validation.json)
+        _emit_regulatory_monitor()
+        _emit_run_metadata()
+
+    except Exception as e:
+        live_status = "FAIL"
+        exit_code = 1
+        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "validator", "error": repr(e)})
+
+        # Even on error, try to produce a minimal live payload
+        _write_json(REPORTS_DIR / "live_validation.json", {
+            "status": live_status,
+            "performance": performance,
+            "gate": gate,
+        })
+
+        # Best-effort governance snapshot
+        _emit_regulatory_monitor()
+        _emit_run_metadata()
 
     return exit_code
 
@@ -209,5 +221,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
 
