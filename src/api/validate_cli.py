@@ -7,12 +7,10 @@
 #   - api_fairness_report.md
 #   - fairness_summary.json
 #   - policy_gate_result.json
-#   - shap_top_features.json   <-- added
-#   - live_validation.json     (status strictly PASS/FAIL)
-#
-# Exit codes (for CLI usage; CI treats FAIL as non-fatal):
-#   0 => PASS
-#   1 => FAIL or unexpected error
+#   - shap_top_features.json
+#   - regulatory_monitor.json        <-- NEW
+#   - run_metadata.json              <-- NEW
+#   - live_validation.json           (status strictly PASS/FAIL)
 
 from __future__ import annotations
 
@@ -23,21 +21,27 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-# Local imports (made reliable in CI by src/__init__.py + PYTHONPATH)
+# Local imports
 try:
     from src.eval import performance_metrics
 except Exception:
     performance_metrics = None
-
 try:
     from src.ops import policy_gate as policy_gate_mod
 except Exception:
     policy_gate_mod = None
-
 try:
     from src.explain import shap_stub
 except Exception:
     shap_stub = None
+try:
+    from src.ops import regulatory_monitor
+except Exception:
+    regulatory_monitor = None
+try:
+    from src.ops import run_metadata
+except Exception:
+    run_metadata = None
 
 REPORTS_DIR = Path("reports")
 
@@ -128,14 +132,12 @@ def _run_policy_gate(perf: Dict[str, Any]) -> Dict[str, Any]:
     return stub
 
 def _ensure_shap_placeholder() -> str | None:
-    """Always produce a SHAP-like artifact for the dashboard."""
     try:
         if shap_stub is None or not hasattr(shap_stub, "main"):
             raise RuntimeError("shap_stub.main unavailable")
         return shap_stub.main(out_dir=str(REPORTS_DIR))
     except Exception as e:
         _write_json(REPORTS_DIR / "validator_error.json", {"stage": "shap", "error": repr(e)})
-        # Best-effort fallback to a trivial payload
         fallback = REPORTS_DIR / "shap_top_features.json"
         if not fallback.exists():
             _write_json(fallback, {
@@ -144,10 +146,26 @@ def _ensure_shap_placeholder() -> str | None:
             })
         return str(fallback)
 
+def _emit_regulatory_monitor() -> None:
+    try:
+        if regulatory_monitor is None or not hasattr(regulatory_monitor, "main"):
+            raise RuntimeError("regulatory_monitor.main unavailable")
+        regulatory_monitor.main(out_dir=str(REPORTS_DIR))
+    except Exception as e:
+        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "regulatory_monitor", "error": repr(e)})
+
+def _emit_run_metadata() -> None:
+    try:
+        if run_metadata is None or not hasattr(run_metadata, "main"):
+            raise RuntimeError("run_metadata.main unavailable")
+        run_metadata.main(out_dir=str(REPORTS_DIR))
+    except Exception as e:
+        _write_json(REPORTS_DIR / "validator_error.json", {"stage": "run_metadata", "error": repr(e)})
+
 def run(args: argparse.Namespace) -> int:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    exit_code = 1  # default FAIL
+    exit_code = 1
     live_status = "FAIL"
     performance: Dict[str, Any] = {}
     fairness: Dict[str, Any] = {}
@@ -156,8 +174,12 @@ def run(args: argparse.Namespace) -> int:
     try:
         performance = _safe_performance(args.preds)
         fairness = _ensure_fairness_placeholders()
-        _ensure_shap_placeholder()  # <-- added
+        _ensure_shap_placeholder()
         gate = _run_policy_gate(performance)
+
+        # NEW: governance & links
+        _emit_regulatory_monitor()
+        _emit_run_metadata()
 
         gate_status = str(gate.get("status", "")).upper()
         if gate_status == "PASS":
@@ -166,7 +188,6 @@ def run(args: argparse.Namespace) -> int:
         else:
             live_status = "FAIL"
             exit_code = 1
-
     except Exception as e:
         live_status = "FAIL"
         exit_code = 1
@@ -188,6 +209,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
 
 
