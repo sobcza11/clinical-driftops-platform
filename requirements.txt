@@ -11,8 +11,8 @@
 # PyYAML==6.0.2
 
 
-numpy>=1.24.0
-pandas==2.0.0
+numpy==1.26.4        # <— add or change to any <2.0, 1.26.4 is stable
+pandas==2.0.0        # keep as-is if you want
 scikit-learn>=1.2.0
 matplotlib==3.8.4
 shap==0.44.1
@@ -23,3 +23,4 @@ Pillow>=10
 fastapi>=0.115
 uvicorn>=0.30
 scipy>=1.10.0
+

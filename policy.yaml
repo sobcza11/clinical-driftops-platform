@@ -30,5 +30,12 @@ performance:
   min_auroc: 0.75
   min_auprc: 0.20
 
-
+gate:
+  min_auroc: 0.70
+  min_ks: 0.10
+  fail_closed: true
+explain:
+  top_k: 10
+audit:
+  fairness_placeholder_ok: true
 

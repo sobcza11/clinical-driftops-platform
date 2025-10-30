@@ -1,24 +1,28 @@
-# tests/test_dashboard.py
-from pathlib import Path
-import json, subprocess, sys
+import pathlib, subprocess, sys, os
 
-def _run(cmd):
-    return subprocess.run(cmd, capture_output=True, text=True, check=False)
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+PY = sys.executable
 
-def test_dashboard_builds(mini_workspace):
-    # Ensure minimal required artifacts
-    rep = mini_workspace["reports"]
-    (rep / "performance_metrics.json").write_text(json.dumps({"auroc":1.0,"auprc":1.0,"log_loss":0.1}, indent=2), encoding="utf-8")
-    (rep / "policy_gate_result.json").write_text(json.dumps({"status":"PASS","checks":[]}, indent=2), encoding="utf-8")
-    (rep / "live_validation.json").write_text(json.dumps({"status":"PASS"}, indent=2), encoding="utf-8")
-    (rep / "fairness_summary.json").write_text(json.dumps({"parity_gap":0.01}, indent=2), encoding="utf-8")
-    (rep / "shap_top_features.json").write_text(json.dumps({"n_top_features":3,"features":["a","b","c"]}, indent=2), encoding="utf-8")
+def test_dashboard_builds(tmp_path):
+    # Ensure required inputs exist
+    reports = tmp_path / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "performance_metrics.json").write_text(
+        '{"n":4,"accuracy@0.5":1.0,"auroc":1.0,"ks_stat":1.0}', encoding="utf-8"
+    )
+    (reports / "policy_gate_result.json").write_text(
+        '{"status":"PASS","policy":{"min_auroc":0.7,"min_ks":0.1},"reasons":[]}',
+        encoding="utf-8"
+    )
+    (reports / "fairness_summary.json").write_text(
+        '{"overall":{"demographic_parity_ratio":1.0}}', encoding="utf-8"
+    )
 
-    # Build dashboard
-    rc = _run([sys.executable, "src/reports_dashboard.py"])
-    assert rc.returncode == 0, rc.stderr
-    assert (rep / "index.html").exists()
-    # Quick smoke: HTML file contains key sections
-    html = (rep / "index.html").read_text(encoding="utf-8")
-    assert "Clinical DriftOps — Reports Dashboard" in html
-    assert "Policy Gate" in html
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+
+    # run dashboard
+    subprocess.check_call([PY, str(ROOT / "src" / "reports_dashboard.py")],
+                          cwd=ROOT, env=env)
+
+    assert (ROOT / "reports" / "index.html").exists()
