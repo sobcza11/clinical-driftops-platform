@@ -9,11 +9,14 @@ from typing import Any, Dict, List
 
 REPORTS = Path("reports")
 
-def _read_json(path: Path) -> Dict[str, Any]:
+def _read_json(path: Path):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        return {}
+        return {} if path.name.endswith(".json") else {}
+
+def _exists(p: Path) -> bool:
+    return p.exists() and p.is_file()
 
 def _badge(status: str) -> str:
     s = (status or "").upper()
@@ -144,8 +147,55 @@ def _runmeta_section(meta: Dict[str, Any]) -> str:
       </section>
     """
 
+def _policy_registry_section(summary: Dict[str, Any]) -> str:
+    if not summary:
+        return ""
+    active = summary.get("active_policy", {})
+    thresholds = active.get("thresholds", {})
+    settings = active.get("settings", {})
+    registry = summary.get("registry", {}) or {}
+    policies = registry.get("policies", []) or []
+
+    rows_a = []
+    rows_a.append(f"<tr><td>min_auroc</td><td>{thresholds.get('min_auroc','')}</td></tr>")
+    rows_a.append(f"<tr><td>min_ks</td><td>{thresholds.get('min_ks','')}</td></tr>")
+    rows_a.append(f"<tr><td>allow_missing_labels</td><td>{settings.get('allow_missing_labels','')}</td></tr>")
+    active_html = f"""
+      <h3>Active Policy</h3>
+      <table border="1" cellspacing="0" cellpadding="6">
+        <tbody>{''.join(rows_a)}</tbody>
+      </table>
+    """
+
+    reg_html = ""
+    if policies:
+        head = "<thead><tr><th>Policy ID</th><th>Description</th><th>Applies To</th><th>Thresholds</th></tr></thead>"
+        body_rows = []
+        for p in policies:
+            thr = p.get("thresholds") or {}
+            thr_str = ", ".join(f"{k}={v}" for k,v in thr.items())
+            body_rows.append(
+                f"<tr><td>{p.get('id','')}</td><td>{p.get('description','')}</td>"
+                f"<td>{', '.join(p.get('applies_to') or [])}</td>"
+                f"<td>{thr_str}</td></tr>"
+            )
+        reg_html = f"""
+          <h3>Registry</h3>
+          <table border="1" cellspacing="0" cellpadding="6">
+            {head}
+            <tbody>{''.join(body_rows)}</tbody>
+          </table>
+        """
+
+    return f"""
+      <section>
+        <h2>Policy Registry</h2>
+        {active_html}
+        {reg_html}
+      </section>
+    """
+
 def _bundle_link() -> str:
-    # The bundle is published alongside index.html to Pages
     bundle = REPORTS / "driftops_bundle.zip"
     if not bundle.exists():
         return ""
@@ -153,6 +203,101 @@ def _bundle_link() -> str:
       <section>
         <h2>Download</h2>
         <p><a href="driftops_bundle.zip">Download full artifact bundle (zip)</a></p>
+      </section>
+    """
+
+def _checklist_section() -> str:
+    items = [
+        ("live_validation.json", _exists(REPORTS / "live_validation.json")),
+        ("policy_gate_result.json", _exists(REPORTS / "policy_gate_result.json")),
+        ("performance_metrics.json", _exists(REPORTS / "performance_metrics.json")),
+        ("performance_metrics.csv", _exists(REPORTS / "performance_metrics.csv")),
+        ("fairness_summary.json", _exists(REPORTS / "fairness_summary.json")),
+        ("api_fairness_report.md", _exists(REPORTS / "api_fairness_report.md")),
+        ("api_fairness_metrics.csv", _exists(REPORTS / "api_fairness_metrics.csv")),
+        ("shap_top_features.json", _exists(REPORTS / "shap_top_features.json")),
+        ("regulatory_monitor.json", _exists(REPORTS / "regulatory_monitor.json")),
+        ("run_metadata.json", _exists(REPORTS / "run_metadata.json")),
+        ("policy_registry_summary.json", _exists(REPORTS / "policy_registry_summary.json")),
+        ("evidence_digest.json", _exists(REPORTS / "evidence_digest.json")),
+        ("drift_history.json", _exists(REPORTS / "drift_history.json")),
+        ("index.html", _exists(REPORTS / "index.html")),
+        ("driftops_bundle.zip", _exists(REPORTS / "driftops_bundle.zip")),
+    ]
+    rows = []
+    for name, present in items:
+        color = "#22c55e" if present else "#ef4444"
+        label = "Yes" if present else "No"
+        rows.append(f"<tr><td>{name}</td><td><b style='color:{color}'>{label}</b></td></tr>")
+    return f"""
+      <section>
+        <h2>Evidence Checklist</h2>
+        <table border="1" cellspacing="0" cellpadding="6">
+          <thead><tr><th>Artifact</th><th>Present</th></tr></thead>
+          <tbody>{''.join(rows)}</tbody>
+        </table>
+      </section>
+    """
+
+def _integrity_section(digest: Dict[str, Any]) -> str:
+    if not digest:
+        return ""
+    rows = []
+    # Root files
+    root = digest.get("root_files", {}) or {}
+    for name, info in root.items():
+        sha = (info or {}).get("sha256", "")
+        sha_short = sha[:12] + "…" if sha else ""
+        size = (info or {}).get("size_bytes", "")
+        present = (info or {}).get("exists", False)
+        color = "#22c55e" if present else "#ef4444"
+        rows.append(f"<tr><td>{name}</td><td>{size}</td><td><code>{sha_short}</code></td><td><b style='color:{color}'>{'Yes' if present else 'No'}</b></td></tr>")
+    # Report files
+    rep = digest.get("report_files", {}) or {}
+    for name, info in rep.items():
+        sha = (info or {}).get("sha256", "")
+        sha_short = sha[:12] + "…" if sha else ""
+        size = (info or {}).get("size_bytes", "")
+        present = (info or {}).get("exists", False)
+        color = "#22c55e" if present else "#ef4444"
+        # Link report-local files if present
+        link = name if present else "#"
+        name_html = f'<a href="{link}">{name}</a>' if present else name
+        rows.append(f"<tr><td>{name_html}</td><td>{size}</td><td><code>{sha_short}</code></td><td><b style='color:{color}'>{'Yes' if present else 'No'}</b></td></tr>")
+
+    return f"""
+      <section>
+        <h2>Integrity Digest (SHA256)</h2>
+        <table border="1" cellspacing="0" cellpadding="6">
+          <thead><tr><th>File</th><th>Size (bytes)</th><th>SHA256</th><th>Present</th></tr></thead>
+          <tbody>{''.join(rows)}</tbody>
+        </table>
+      </section>
+    """
+
+def _drift_history_section(history) -> str:
+    if not isinstance(history, list) or not history:
+        return ""
+    # Newest last; display most recent first
+    rows = []
+    for rec in reversed(history[-50:]):  # show up to 50 recent
+        status = (rec.get("status") or "").upper()
+        badge = _badge(status)
+        ts = rec.get("ts", "")
+        auroc = rec.get("auroc", "")
+        ks = rec.get("ks_stat", "")
+        min_auroc = rec.get("min_auroc", "")
+        min_ks = rec.get("min_ks", "")
+        rows.append(
+            f"<tr><td>{ts}</td><td>{badge}</td><td>{auroc}</td><td>{ks}</td><td>{min_auroc}</td><td>{min_ks}</td></tr>"
+        )
+    return f"""
+      <section>
+        <h2>Drift History</h2>
+        <table border="1" cellspacing="0" cellpadding="6">
+          <thead><tr><th>Timestamp (UTC)</th><th>Status</th><th>AUROC</th><th>KS</th><th>min_auroc</th><th>min_ks</th></tr></thead>
+          <tbody>{''.join(rows)}</tbody>
+        </table>
       </section>
     """
 
@@ -166,6 +311,9 @@ def build() -> str:
     fair = _read_json(REPORTS / "fairness_summary.json")
     regm = _read_json(REPORTS / "regulatory_monitor.json")
     rmeta = _read_json(REPORTS / "run_metadata.json")
+    polsum = _read_json(REPORTS / "policy_registry_summary.json")
+    digest = _read_json(REPORTS / "evidence_digest.json")
+    history = _read_json(REPORTS / "drift_history.json")
 
     status_badge = _badge(live.get("status", "FAIL"))
 
@@ -178,6 +326,7 @@ def build() -> str:
   <style>
     body {{ font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 24px; }}
     h1,h2 {{ margin: 0 0 12px; }}
+    h3 {{ margin: 8px 0; }}
     section {{ margin: 20px 0; }}
     .kv td {{ padding: 4px 8px; }}
     pre {{ background:#0b1221; color:#e5e7eb; padding:12px; border-radius:8px; overflow:auto; }}
@@ -211,7 +360,11 @@ def build() -> str:
   {_fairness_section(fair)}
   {_regulatory_section(regm)}
   {_runmeta_section(rmeta)}
+  {_policy_registry_section(polsum)}
   {_bundle_link()}
+  {_integrity_section(digest)}
+  {_drift_history_section(history)}
+  {_checklist_section()}
 
 </body>
 </html>
