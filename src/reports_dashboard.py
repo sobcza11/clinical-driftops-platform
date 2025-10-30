@@ -1,6 +1,6 @@
 ﻿# src/reports_dashboard.py
 # Purpose: Static HTML dashboard from artifacts in reports/
-# Keeps required title + "Policy Gate" section.
+# Keeps required title + "Policy Gate" section for tests.
 
 from __future__ import annotations
 import json
@@ -71,7 +71,7 @@ def _shap_section(shap: Dict[str, Any]) -> str:
 
 def _fairness_section(fair: Dict[str, Any]) -> str:
     slices = fair.get("slices", [])
-    metrics_by_slice: Dict[str, Dict[str, Any]] = fair.get("metrics", {})
+    metrics_by_slice: Dict[str, Any] = fair.get("metrics", {})
     metric_names: List[str] = []
     for s in slices:
         for m in (metrics_by_slice.get(s, {}) or {}).keys():
@@ -134,14 +134,25 @@ def _runmeta_section(meta: Dict[str, Any]) -> str:
     if runs:
         for r in runs:
             rows.append(f"<tr><td>MLflow Run</td><td><code>{r.get('path','')}</code></td></tr>")
-    if not rows:
-        return ""
+    if not rows: return ""
     return f"""
       <section>
         <h2>Run Metadata</h2>
         <table border="1" cellspacing="0" cellpadding="6">
           <tbody>{''.join(rows)}</tbody>
         </table>
+      </section>
+    """
+
+def _bundle_link() -> str:
+    # The bundle is published alongside index.html to Pages
+    bundle = REPORTS / "driftops_bundle.zip"
+    if not bundle.exists():
+        return ""
+    return f"""
+      <section>
+        <h2>Download</h2>
+        <p><a href="driftops_bundle.zip">Download full artifact bundle (zip)</a></p>
       </section>
     """
 
@@ -200,6 +211,7 @@ def build() -> str:
   {_fairness_section(fair)}
   {_regulatory_section(regm)}
   {_runmeta_section(rmeta)}
+  {_bundle_link()}
 
 </body>
 </html>
@@ -210,6 +222,4 @@ def build() -> str:
 
 if __name__ == "__main__":
     print(build())
-
-
 
