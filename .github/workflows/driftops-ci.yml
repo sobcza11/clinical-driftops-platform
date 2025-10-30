@@ -1,26 +1,69 @@
-# .github/workflows/driftops-pages.yml
-name: DriftOps Pages
+# .github/workflows/driftops-ci.yml
+name: DriftOps CI
 
 on:
-  workflow_run:
-    workflows: [ "DriftOps CI" ]
-    types: [ "completed" ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  pages: write       # needed for Pages deploy
+  id-token: write    # needed for Pages OIDC
 
 jobs:
-  deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  driftops:
     runs-on: ubuntu-latest
+    outputs:
+      artifact-name: driftops-reports
     steps:
-      - name: Download artifact from CI
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Ensure reports/ & seed predictions if missing
+        shell: bash
+        run: |
+          mkdir -p reports
+          if [ ! -f "reports/predictions.csv" ]; then
+            cat > reports/predictions.csv << 'CSV'
+              y_pred_prob,y_true
+              0.9,1
+              0.2,0
+              0.7,1
+              0.1,0
+              CSV
+          fi
+
+      - name: Run validator (creates all artifacts)
+        run: python src/api/validate_cli.py --preds reports/predictions.csv
+
+      - name: Build dashboard
+        run: python src/reports_dashboard.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: driftops-reports
+          path: reports/**
+
+  pages:
+    needs: driftops
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: driftops-reports
@@ -37,4 +80,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
