@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 import pytest
 
+
 # This autouse fixture runs for every test and overwrites any stubbed files
 @pytest.fixture(autouse=True)
 def ensure_real_sources(mini_workspace):
@@ -22,6 +23,7 @@ def ensure_real_sources(mini_workspace):
     (ws_src / "api").mkdir(parents=True, exist_ok=True)
 
     # Copy the two scripts under test, overwriting any stub
-    shutil.copy2(real_src / "api" / "validate_cli.py", ws_src / "api" / "validate_cli.py")
+    shutil.copy2(
+        real_src / "api" / "validate_cli.py", ws_src / "api" / "validate_cli.py"
+    )
     shutil.copy2(real_src / "reports_dashboard.py", ws_src / "reports_dashboard.py")
-

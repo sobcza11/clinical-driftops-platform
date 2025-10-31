@@ -22,7 +22,9 @@ def _to_lists(y_true: Sequence, y_score: Sequence) -> Tuple[list[int], list[floa
     return yt, ys
 
 
-def _accuracy_at_threshold(y_true: list[int], y_score: list[float], thr: float = 0.5) -> Optional[float]:
+def _accuracy_at_threshold(
+    y_true: list[int], y_score: list[float], thr: float = 0.5
+) -> Optional[float]:
     n = len(y_true)
     if n == 0:
         return None
@@ -110,6 +112,7 @@ def _auprc(y_true: list[int], y_score: list[float]) -> Optional[float]:
 
 def _log_loss(y_true: list[int], y_score: list[float]) -> Optional[float]:
     import math
+
     n = len(y_true)
     if n == 0:
         return None
@@ -120,7 +123,9 @@ def _log_loss(y_true: list[int], y_score: list[float]) -> Optional[float]:
     return loss / n
 
 
-def _best_f1(y_true: Sequence, y_score: Sequence) -> Tuple[Optional[float], Optional[float]]:
+def _best_f1(
+    y_true: Sequence, y_score: Sequence
+) -> Tuple[Optional[float], Optional[float]]:
     yt, ys = _to_lists(y_true, y_score)
     n = len(yt)
     if n == 0:
@@ -135,8 +140,14 @@ def _best_f1(y_true: Sequence, y_score: Sequence) -> Tuple[Optional[float], Opti
         fn = sum(1 for y, p in zip(yt, preds) if y == 1 and p == 0)
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
-        if (f1 > best_f1) or (f1 == best_f1 and best_t is not None and abs(t - 0.5) < abs(best_t - 0.5)):
+        f1 = (
+            (2 * precision * recall / (precision + recall))
+            if (precision + recall) > 0
+            else 0.0
+        )
+        if (f1 > best_f1) or (
+            f1 == best_f1 and best_t is not None and abs(t - 0.5) < abs(best_t - 0.5)
+        ):
             best_f1 = f1
             best_t = t
     return best_t, best_f1 if best_f1 >= 0 else None
@@ -160,7 +171,11 @@ def compute_metrics(y_true: Sequence, y_score: Sequence) -> Dict[str, Optional[f
     fn = sum(1 for y, p in zip(yt, preds) if y == 1 and p == 0)
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1_at_05 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+    f1_at_05 = (
+        (2 * precision * recall / (precision + recall))
+        if (precision + recall) > 0
+        else 0.0
+    )
 
     # best F1 sweep
     best_t, best_f1 = _best_f1(yt, ys)
@@ -187,7 +202,9 @@ def compute_metrics(y_true: Sequence, y_score: Sequence) -> Dict[str, Optional[f
 
 
 # --------- artifact writer ---------
-def compute_performance_metrics(preds_csv: str, out_dir: str = "reports") -> Dict[str, Optional[float]]:
+def compute_performance_metrics(
+    preds_csv: str, out_dir: str = "reports"
+) -> Dict[str, Optional[float]]:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     y, p = [], []
@@ -204,7 +221,9 @@ def compute_performance_metrics(preds_csv: str, out_dir: str = "reports") -> Dic
                 continue
 
     metrics = compute_metrics(y, p)
-    (out / "performance_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    (out / "performance_metrics.json").write_text(
+        json.dumps(metrics, indent=2), encoding="utf-8"
+    )
     with (out / "performance_metrics.csv").open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
         w.writerow(["metric", "value"])
@@ -214,14 +233,23 @@ def compute_performance_metrics(preds_csv: str, out_dir: str = "reports") -> Dic
 
 
 # --------- CLI entry ---------
-def main(preds_csv: Optional[str] = None, out_dir: str = "reports") -> Dict[str, Optional[float]]:
+def main(
+    preds_csv: Optional[str] = None, out_dir: str = "reports"
+) -> Dict[str, Optional[float]]:
     if preds_csv is None:
-        parser = argparse.ArgumentParser(description="Compute performance metrics & write artifacts")
-        parser.add_argument("--preds", dest="preds_csv", required=True, help="Path to CSV with y_true,y_pred_prob")
-        parser.add_argument("--out_dir", default=out_dir, help="Output directory (default: reports)")
+        parser = argparse.ArgumentParser(
+            description="Compute performance metrics & write artifacts"
+        )
+        parser.add_argument(
+            "--preds",
+            dest="preds_csv",
+            required=True,
+            help="Path to CSV with y_true,y_pred_prob",
+        )
+        parser.add_argument(
+            "--out_dir", default=out_dir, help="Output directory (default: reports)"
+        )
         args = parser.parse_args()
         preds_csv = args.preds_csv
         out_dir = args.out_dir
     return compute_performance_metrics(preds_csv, out_dir)
-
-

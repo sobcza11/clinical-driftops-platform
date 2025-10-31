@@ -5,7 +5,6 @@ drift:
   psi_fail: 0.20
   ks_warn: 0.10
   ks_fail: 0.20
-  # Columns to ignore when computing drift (IDs, timestamps, labels, etc.)
   ignore_cols:
     - subject_id
     - hadm_id
@@ -20,7 +19,7 @@ drift:
     - charttime
 
 fairness:
-  parity_gap_fail: 0.05  # larger gap fails
+  parity_gap_fail: 0.05
 
 explainability:
   top_features_min: 2
@@ -34,8 +33,9 @@ gate:
   min_auroc: 0.70
   min_ks: 0.10
   fail_closed: true
+
 explain:
   top_k: 10
+
 audit:
   fairness_placeholder_ok: true
-

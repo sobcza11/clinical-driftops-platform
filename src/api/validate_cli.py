@@ -2,7 +2,11 @@
 # Clinical DriftOps — end-to-end validator CLI (PASS/FAIL exit code)
 from __future__ import annotations
 
-import argparse, csv, json, os, sys
+import argparse
+import csv
+import json
+import os
+import sys
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 from importlib import import_module
@@ -15,8 +19,10 @@ try:
 except Exception:
     shap_stub_main = None
 
+
 def _ensure_reports() -> None:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def _maybe_seed_predictions(out_csv: Path) -> None:
     if out_csv.exists():
@@ -27,6 +33,7 @@ def _maybe_seed_predictions(out_csv: Path) -> None:
         encoding="utf-8",
     )
 
+
 def _read_csv_head(path: Path, n: int = 5) -> Tuple[Optional[list], Optional[list]]:
     if not path.exists():
         return None, None
@@ -36,10 +43,11 @@ def _read_csv_head(path: Path, n: int = 5) -> Tuple[Optional[list], Optional[lis
         if not rows:
             return None, None
         header = rows[0]
-        body = rows[1:1+n]
+        body = rows[1 : 1 + n]
         return header, body
     except Exception:
         return None, None
+
 
 # ---------- Minimal perf if eval module missing ----------
 def _parse_preds(preds_csv: Path):
@@ -57,6 +65,7 @@ def _parse_preds(preds_csv: Path):
                 continue
     return y_true, y_prob
 
+
 def _auc_mw(y_true, y_prob):
     pos_idx = [i for i, y in enumerate(y_true) if y == 1]
     neg_idx = [i for i, y in enumerate(y_true) if y == 0]
@@ -70,16 +79,17 @@ def _auc_mw(y_true, y_prob):
     i = 0
     while i < len(pairs):
         j = i
-        while j + 1 < len(pairs) and pairs[j+1][0] == pairs[i][0]:
+        while j + 1 < len(pairs) and pairs[j + 1][0] == pairs[i][0]:
             j += 1
         avg_rank = (rank + (rank + (j - i))) / 2.0
-        for k in range(i, j+1):
+        for k in range(i, j + 1):
             ranks[pairs[k][1]] = avg_rank
         rank = j + 2
         i = j + 1
     R1 = sum(ranks[i] for i in pos_idx)
     U1 = R1 - n1 * (n1 + 1) / 2.0
     return U1 / (n1 * n0)
+
 
 def _ks_stat(y_true, y_prob):
     pairs = sorted(zip(y_prob, y_true), key=lambda x: x[0])
@@ -99,11 +109,18 @@ def _ks_stat(y_true, y_prob):
         maxdiff = max(maxdiff, abs(tpr - fpr))
     return maxdiff
 
+
 def _compute_basic_performance(preds_csv: Path) -> Dict[str, Any]:
     y, p = _parse_preds(preds_csv)
     n = len(y)
     if n == 0:
-        return {"n": 0, "n_samples": 0, "accuracy@0.5": None, "auroc": None, "ks_stat": None}
+        return {
+            "n": 0,
+            "n_samples": 0,
+            "accuracy@0.5": None,
+            "auroc": None,
+            "ks_stat": None,
+        }
     acc = sum(((1 if s >= 0.5 else 0) == yy) for yy, s in zip(y, p)) / n
     auc = _auc_mw(y, p)
     ks = _ks_stat(y, p)
@@ -114,6 +131,7 @@ def _compute_basic_performance(preds_csv: Path) -> Dict[str, Any]:
         "auroc": round(auc, 6) if auc is not None else None,
         "ks_stat": round(ks, 6) if ks is not None else None,
     }
+
 
 def run_performance_metrics(preds_csv: str) -> None:
     try:
@@ -130,17 +148,23 @@ def run_performance_metrics(preds_csv: str) -> None:
     except Exception:
         pass
     perf = _compute_basic_performance(Path(preds_csv))
-    (REPORTS_DIR / "performance_metrics.json").write_text(json.dumps(perf, indent=2), encoding="utf-8")
+    (REPORTS_DIR / "performance_metrics.json").write_text(
+        json.dumps(perf, indent=2), encoding="utf-8"
+    )
     # small CSV too (tests don’t require it, but nice to have)
     try:
         import csv as _csv
-        with (REPORTS_DIR / "performance_metrics.csv").open("w", encoding="utf-8", newline="") as f:
+
+        with (REPORTS_DIR / "performance_metrics.csv").open(
+            "w", encoding="utf-8", newline=""
+        ) as f:
             w = _csv.writer(f)
             w.writerow(["metric", "value"])
             for k, v in perf.items():
                 w.writerow([k, v if v is not None else ""])
     except Exception:
         pass
+
 
 def run_fairness_audit(preds_csv: str) -> None:
     # placeholder artifacts (no argparse collisions)
@@ -154,6 +178,7 @@ def run_fairness_audit(preds_csv: str) -> None:
         json.dumps({"overall": {"demographic_parity_ratio": 1.0}}, indent=2),
         encoding="utf-8",
     )
+
 
 def run_policy_gate() -> Dict[str, Any]:
     """Call whichever entrypoint exists; always pass the reports dir & write observed."""
@@ -174,7 +199,15 @@ def run_policy_gate() -> Dict[str, Any]:
                     p = REPORTS_DIR / "policy_gate_result.json"
                     if not p.exists():
                         (REPORTS_DIR / "policy_gate_result.json").write_text(
-                            json.dumps({"status": "PASS", "policy": {}, "reasons": [], "observed": {"max_psi": None, "max_ks": None}}, indent=2),
+                            json.dumps(
+                                {
+                                    "status": "PASS",
+                                    "policy": {},
+                                    "reasons": [],
+                                    "observed": {"max_psi": None, "max_ks": None},
+                                },
+                                indent=2,
+                            ),
                             encoding="utf-8",
                         )
                     return rv if isinstance(rv, dict) else {"status": "PASS"}
@@ -182,22 +215,35 @@ def run_policy_gate() -> Dict[str, Any]:
         pass
     # Fallback: derive pass/fail from perf; include observed for tests
     try:
-        perf = json.loads((REPORTS_DIR / "performance_metrics.json").read_text(encoding="utf-8"))
+        perf = json.loads(
+            (REPORTS_DIR / "performance_metrics.json").read_text(encoding="utf-8")
+        )
         auroc = perf.get("auroc") or 0.0
         ks = perf.get("ks_stat") or 0.0
         status = "PASS" if (auroc >= 0.7 and ks >= 0.1) else "FAIL"
     except Exception:
         status = "PASS"
         ks = None
-    payload = {"status": status, "policy": {"min_auroc": 0.7, "min_ks": 0.1}, "reasons": [],
-               "observed": {"max_psi": None, "max_ks": ks}}
-    (REPORTS_DIR / "policy_gate_result.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    payload = {
+        "status": status,
+        "policy": {"min_auroc": 0.7, "min_ks": 0.1},
+        "reasons": [],
+        "observed": {"max_psi": None, "max_ks": ks},
+    }
+    (REPORTS_DIR / "policy_gate_result.json").write_text(
+        json.dumps(payload, indent=2), encoding="utf-8"
+    )
     return payload
+
 
 def _gate_result() -> Dict[str, Any]:
     p = REPORTS_DIR / "policy_gate_result.json"
     if not p.exists():
-        return {"status": "fail", "policy": "default", "reasons": ["Gate unavailable; failing closed."]}
+        return {
+            "status": "fail",
+            "policy": "default",
+            "reasons": ["Gate unavailable; failing closed."],
+        }
     try:
         raw = json.loads(p.read_text(encoding="utf-8"))
         status = (raw.get("status") or raw.get("gate_status") or "").lower()
@@ -207,11 +253,18 @@ def _gate_result() -> Dict[str, Any]:
             "reasons": raw.get("reasons", []),
         }
     except Exception:
-        return {"status": "fail", "policy": "default", "reasons": ["Gate parse error; failing closed."]}
+        return {
+            "status": "fail",
+            "policy": "default",
+            "reasons": ["Gate parse error; failing closed."],
+        }
+
 
 def _perf_for_live() -> Dict[str, Any]:
     try:
-        data = json.loads((REPORTS_DIR / "performance_metrics.json").read_text(encoding="utf-8"))
+        data = json.loads(
+            (REPORTS_DIR / "performance_metrics.json").read_text(encoding="utf-8")
+        )
         return {
             "n": data.get("n"),
             "accuracy@0.5": data.get("accuracy@0.5"),
@@ -221,7 +274,10 @@ def _perf_for_live() -> Dict[str, Any]:
     except Exception:
         return {"n": 0, "accuracy@0.5": None, "auroc": None, "ks_stat": None}
 
-def _write_live_validation(status: str, performance: Dict[str, Any], gate: Dict[str, Any]) -> None:
+
+def _write_live_validation(
+    status: str, performance: Dict[str, Any], gate: Dict[str, Any]
+) -> None:
     payload = {
         "status": status,
         "performance": performance,
@@ -231,7 +287,10 @@ def _write_live_validation(status: str, performance: Dict[str, Any], gate: Dict[
             "reasons": gate.get("reasons", []),
         },
     }
-    (REPORTS_DIR / "live_validation.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (REPORTS_DIR / "live_validation.json").write_text(
+        json.dumps(payload, indent=2), encoding="utf-8"
+    )
+
 
 def _call_optional(module_path: str, func_name: str = "main") -> None:
     try:
@@ -248,9 +307,15 @@ def _call_optional(module_path: str, func_name: str = "main") -> None:
     except Exception:
         pass
 
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Clinical DriftOps validator")
-    parser.add_argument("--preds", type=str, required=True, help="Path to predictions.csv (y_true,y_pred_prob)")
+    parser.add_argument(
+        "--preds",
+        type=str,
+        required=True,
+        help="Path to predictions.csv (y_true,y_pred_prob)",
+    )
     args = parser.parse_args(argv)
 
     # IMPORTANT: write outputs next to the preds file for pytest tmp dirs
@@ -274,7 +339,16 @@ def main(argv: Optional[list[str]] = None) -> int:
         run_performance_metrics(str(preds_path))
     except Exception as e:
         (REPORTS_DIR / "performance_metrics.json").write_text(
-            json.dumps({"n": 0, "n_samples": 0, "accuracy@0.5": None, "auroc": None, "ks_stat": None}, indent=2),
+            json.dumps(
+                {
+                    "n": 0,
+                    "n_samples": 0,
+                    "accuracy@0.5": None,
+                    "auroc": None,
+                    "ks_stat": None,
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
         print(f"[validator] performance_metrics failed: {e}")
@@ -297,7 +371,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         run_policy_gate()
     except Exception as e:
         (REPORTS_DIR / "policy_gate_result.json").write_text(
-            json.dumps({"status": "FAIL", "policy": "default", "reasons": [f"Gate error: {e}"], "observed": {"max_psi": None, "max_ks": None}}, indent=2),
+            json.dumps(
+                {
+                    "status": "FAIL",
+                    "policy": "default",
+                    "reasons": [f"Gate error: {e}"],
+                    "observed": {"max_psi": None, "max_ks": None},
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
         print(f"[validator] policy_gate failed: {e}")
@@ -320,6 +402,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"[validator] FINAL STATUS: {status}")
     return 0 if status == "PASS" else 1
 
+
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
@@ -333,9 +416,18 @@ if __name__ == "__main__":
             )
             _write_live_validation(
                 status="FAIL",
-                performance={"n": 0, "n_samples": 0, "accuracy@0.5": None, "auroc": None, "ks_stat": None},
-                gate={"status": "fail", "policy": "default", "reasons": ["Unhandled exception in validator"]},
+                performance={
+                    "n": 0,
+                    "n_samples": 0,
+                    "accuracy@0.5": None,
+                    "auroc": None,
+                    "ks_stat": None,
+                },
+                gate={
+                    "status": "fail",
+                    "policy": "default",
+                    "reasons": ["Unhandled exception in validator"],
+                },
             )
         finally:
             sys.exit(1)
-

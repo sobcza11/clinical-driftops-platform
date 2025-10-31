@@ -13,3 +13,9 @@ venv/
 # OS/editor
 .DS_Store
 Thumbs.db
+
+reports/*
+!reports/README.md
+# DriftOps: CI/validator artifacts (kept out of VCS)
+reports/*
+!reports/README.md

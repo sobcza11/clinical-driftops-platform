@@ -2,7 +2,8 @@
 # Ensures stdout/stderr are UTF-8 so any Unicode (emoji, long dashes, etc.)
 # prints cleanly on Windows terminals and in subprocesses spawned by tests.
 
-import os, sys
+import os
+import sys
 
 # Respect PYTHONIOENCODING if user set it; otherwise force UTF-8.
 if not os.environ.get("PYTHONIOENCODING"):

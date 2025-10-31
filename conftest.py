@@ -1,20 +1,25 @@
 # conftest.py (repo root) — drop-in fixture that guarantees test assets exist
-import sys, shutil
+import sys
+import shutil
 from pathlib import Path
-import json, yaml
-import pandas as pd
+import json
+import yaml
 import pytest
 
 ROOT = Path(__file__).resolve().parent
-SRC  = ROOT / "src"
-MON  = ROOT / "monitors"
+SRC = ROOT / "src"
+MON = ROOT / "monitors"
+
 
 def _copy_tree(src: Path, dst: Path):
     if src.exists():
         shutil.copytree(
-            src, dst, dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
+            src,
+            dst,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
         )
+
 
 @pytest.fixture
 def mini_workspace(tmp_path, monkeypatch):
@@ -117,7 +122,7 @@ def _drift_summary(policy: Dict[str,Any]) -> Dict[str,float]:
         xa = pd.to_numeric(curr[c], errors="coerce").values
         xb = xb[np.isfinite(xb)]; xa = xa[np.isfinite(xa)]
         if len(xb)==0 or len(xa)==0: continue
-        v = _psi(xb, xa); 
+        v = _psi(xb, xa);
         if np.isfinite(v): psi_vals.append(float(v))
         ks = ks_2samp(xb, xa).statistic if (len(xb) and len(xa)) else np.nan
         if np.isfinite(ks): ks_vals.append(float(ks))
@@ -216,31 +221,58 @@ if __name__=='__main__':
     )
 
     # 6) Seed data/, reports/, policy.yaml, SHAP stub
-    data = tmp_path / "data"; data.mkdir(parents=True, exist_ok=True)
-    reports = tmp_path / "reports"; reports.mkdir(parents=True, exist_ok=True)
+    data = tmp_path / "data"
+    data.mkdir(parents=True, exist_ok=True)
+    reports = tmp_path / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
 
     (data / "data_prepared_baseline.csv").write_text(
-        "feat1,subject_id,admittime,label\n0.1,1,2020-01-01,0\n0.9,2,2020-01-02,1\n", encoding="utf-8")
+        "feat1,subject_id,admittime,label\n0.1,1,2020-01-01,0\n0.9,2,2020-01-02,1\n",
+        encoding="utf-8",
+    )
     (data / "data_prepared_current.csv").write_text(
-        "feat1,subject_id,admittime,label\n0.2,3,2025-01-01,0\n0.8,4,2025-01-02,1\n", encoding="utf-8")
+        "feat1,subject_id,admittime,label\n0.2,3,2025-01-01,0\n0.8,4,2025-01-02,1\n",
+        encoding="utf-8",
+    )
 
-    (tmp_path / "policy.yaml").write_text(yaml.safe_dump({
-        "version": 1,
-        "drift": {
-            "psi_warn": 0.10, "psi_fail": 0.20,
-            "ks_warn": 0.10,  "ks_fail": 0.20,
-            "ignore_cols": ["subject_id", "admittime", "label", "y_true", "y_pred", "y_score"]
-        },
-        "fairness": {"parity_gap_fail": 0.05},
-        "explainability": {"top_features_min": 2, "require_shap_artifact": True},
-        "performance": {"min_auroc": 0.75, "min_auprc": 0.20}
-    }), encoding="utf-8")
+    (tmp_path / "policy.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "drift": {
+                    "psi_warn": 0.10,
+                    "psi_fail": 0.20,
+                    "ks_warn": 0.10,
+                    "ks_fail": 0.20,
+                    "ignore_cols": [
+                        "subject_id",
+                        "admittime",
+                        "label",
+                        "y_true",
+                        "y_pred",
+                        "y_score",
+                    ],
+                },
+                "fairness": {"parity_gap_fail": 0.05},
+                "explainability": {
+                    "top_features_min": 2,
+                    "require_shap_artifact": True,
+                },
+                "performance": {"min_auroc": 0.75, "min_auprc": 0.20},
+            }
+        ),
+        encoding="utf-8",
+    )
 
     (reports / "predictions.csv").write_text(
-        "y_true,y_score\n0,0.01\n1,0.99\n0,0.02\n1,0.98\n", encoding="utf-8")
-    (reports / "shap_top_features.json").write_text(json.dumps({
-        "n_top_features": 3, "features": ["feat1", "featX", "featY"]
-    }, indent=2), encoding="utf-8")
+        "y_true,y_score\n0,0.01\n1,0.99\n0,0.02\n1,0.98\n", encoding="utf-8"
+    )
+    (reports / "shap_top_features.json").write_text(
+        json.dumps(
+            {"n_top_features": 3, "features": ["feat1", "featX", "featY"]}, indent=2
+        ),
+        encoding="utf-8",
+    )
 
     # 7) Run tests inside the temp repo
     monkeypatch.chdir(tmp_path)

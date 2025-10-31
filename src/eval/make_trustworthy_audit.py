@@ -1,158 +1,256 @@
-"""
-Make a consolidated Trustworthy AI Audit (Phase V) as Markdown.
-
-Inputs (expected to exist, but handled gracefully if missing):
-- reports/drift_metrics.csv
-- reports/fairness_metrics.csv
-- reports/fairness_report.md
-- reports/data_drift_small_demo.html
-- reports/shap_top_features.png
-
-Usage:
-  python -m src.eval.make_trustworthy_audit --out reports/trustworthy_ai_audit_v1.md
-"""
-
+# src/eval/make_trustworthy_audit.py
 from __future__ import annotations
-import argparse
-import os
+
+import json
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
 import pandas as pd
-from datetime import datetime
 
-def read_csv_safe(path: str):
-    try:
-        if os.path.exists(path):
-            return pd.read_csv(path)
-    except Exception as e:
-        print(f"⚠️ Could not read {path}: {e}")
-    return None
+# Threshold used when a drift "flag" column is not present.
+PSI_ALERT: float = 0.2  # typical "alert" threshold for PSI in many orgs
 
-def read_text_safe(path: str) -> str | None:
-    try:
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                return f.read()
-    except Exception as e:
-        print(f"⚠️ Could not read {path}: {e}")
-    return None
 
-def to_md_table(df: pd.DataFrame) -> str:
+def _safe_read_json(path: Path) -> Dict[str, Any]:
+    """Read JSON file, returning {} if not found or invalid."""
     try:
-        return df.to_markdown(index=False)
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        # Basic fallback
-        header = " | ".join(map(str, df.columns))
-        sep = " | ".join(["---"] * len(df.columns))
-        rows = [" | ".join(map(str, r)) for r in df.values]
-        return "\n".join([header, sep, *rows])
+        pass
+    return {}
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--out", default="reports/trustworthy_ai_audit_v1.md")
-    args = p.parse_args()
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+def _safe_read_csv(path: Path) -> pd.DataFrame:
+    """Read CSV file, returning empty DataFrame if not found or invalid."""
+    try:
+        if path.exists():
+            return pd.read_csv(path)
+    except Exception:
+        pass
+    return pd.DataFrame()
 
-    # Inputs
-    drift_csv = "reports/drift_metrics.csv"
-    fair_csv = "reports/fairness_metrics.csv"
-    fair_md  = "reports/fairness_report.md"
-    drift_html = "reports/data_drift_small_demo.html"
-    shap_png = "reports/shap_top_features.png"
 
-    df_drift = read_csv_safe(drift_csv)
-    df_fair  = read_csv_safe(fair_csv)
-    md_fair  = read_text_safe(fair_md)
+def _first_existing(reports: Path, candidates: Iterable[str]) -> Optional[Path]:
+    """Return the first candidate path that exists under reports/."""
+    for name in candidates:
+        p = reports / name
+        if p.exists():
+            return p
+    return None
 
-    # Heuristics / thresholds (can later drive CI pass/fail)
-    PSI_ALERT = 0.2  # example threshold
-    FAIR_GAP  = 0.10
 
-    # Summaries
-    psi_flags = 0
-    if df_drift is not None:
-        # Try common column names; adjust to your actual CSV schema
-        # Expecting columns like: feature, psi, ks, p_value, drift_flag
-        cols = [c.lower() for c in df_drift.columns]
-        lower = {c.lower(): c for c in df_drift.columns}
-        psi_col = lower.get("psi") or lower.get("population_stability_index", None)
-        flag_col = lower.get("drift_flag") or lower.get("drifted", None)
-
-        if psi_col is not None and flag_col is not None:
-            psi_flags = int(df_drift[df_drift[flag_col] == True].shape[0])
-        elif psi_col is not None:
-            psi_flags = int((df_drift[psi_col] >= PSI_ALERT).sum())
-
-    fair_gaps = None
-    if df_fair is not None:
-        # Expect columns: group, positive_rate, disparity (may vary)
-        # If disparity missing, compute relative to mean positive rate
-        lower = {c.lower(): c for c in df_fair.columns}
-        if "disparity" in lower:
-            fair_gaps = df_fair[lower["disparity"]].abs().max()
-        elif "positive_rate" in lower:
-            mean_rate = float(df_fair[lower["positive_rate"]].mean())
-            fair_gaps = float((df_fair[lower["positive_rate"]] - mean_rate).abs().max())
-
-    # Compose Markdown
-    lines = []
-    lines.append(f"# Trustworthy AI Audit v1.0 (Phase V)\n")
-    lines.append(f"_Generated: {now}_\n")
-    lines.append("## Overview")
-    lines.append("- **Project:** Clinical DriftOps Platform")
-    lines.append("- **Scope:** Phase V – Model Evaluation (drift, explainability, fairness)")
-    lines.append("")
-
-    # Drift
-    lines.append("## 1) Data Drift Summary")
-    if df_drift is None:
-        lines.append(f"- Drift metrics CSV not found at `{drift_csv}`.")
+def _load_drift_frame(reports: Path) -> pd.DataFrame:
+    """
+    Load a drift summary as a DataFrame from common artifacts, trying JSON then CSV.
+    We normalize keys to lower-case for easier, case-insensitive access.
+    """
+    # Try JSON-based artifacts
+    json_path = _first_existing(
+        reports,
+        [
+            "drift_history.json",  # list of records
+            "small_drift_report.json",  # optional alt
+        ],
+    )
+    if json_path:
+        data = _safe_read_json(json_path)
+        # Support both list-of-records and dict with "records"/"rows".
+        if isinstance(data, list):
+            df = pd.DataFrame(data)
+        elif isinstance(data, dict):
+            rows = data.get("records") or data.get("rows") or []
+            df = pd.DataFrame(rows)
+        else:
+            df = pd.DataFrame()
     else:
-        lines.append(f"- Source: `{drift_csv}`")
-        lines.append(f"- Features flagged for drift (heuristic): **{psi_flags}** (PSI ≥ {PSI_ALERT})")
-        lines.append("")
-        lines.append(to_md_table(df_drift.head(25)))
-        lines.append("")
-        if os.path.exists(drift_html):
-            lines.append(f"- Full Evidently report: `{drift_html}`")
-    lines.append("")
+        df = pd.DataFrame()
 
-    # Explainability
-    lines.append("## 2) Explainability (SHAP)")
-    if os.path.exists(shap_png):
-        lines.append(f"![SHAP Top Features]({shap_png})")
-        lines.append("")
-    else:
-        lines.append(f"- SHAP plot not found at `{shap_png}`.\n")
+    # If still empty, try CSV variants
+    if df.empty:
+        csv_path = _first_existing(
+            reports,
+            [
+                "small_drift_report.csv",
+                "drift_report.csv",
+            ],
+        )
+        if csv_path:
+            df = _safe_read_csv(csv_path)
 
-    # Fairness
-    lines.append("## 3) Fairness Audit")
-    if df_fair is None and md_fair is None:
-        lines.append(f"- Fairness outputs not found at `{fair_csv}` / `{fair_md}`.")
-    else:
-        if fair_gaps is not None:
-            lines.append(f"- Max absolute disparity (heuristic): **{fair_gaps:.3f}** (threshold {FAIR_GAP})")
-        if df_fair is not None:
-            lines.append("")
-            lines.append(to_md_table(df_fair))
-            lines.append("")
-        if md_fair:
-            lines.append("### Fairness Report (Markdown)")
-            lines.append("")
-            lines.append(md_fair)
-    lines.append("")
+    # Normalize columns to lower for convenience (keep original df too if needed)
+    if not df.empty:
+        lower_map = {c: str(c).lower() for c in df.columns}
+        df = df.rename(columns=lower_map)
 
-    # Governance
-    lines.append("## 4) Governance Notes")
-    lines.append("- HIPAA-aligned (de-identified data), FDA GMLP lineage & reproducibility, EU AI Act monitoring.")
-    lines.append("- Human-in-the-loop review recommended for flagged drift or fairness gaps.")
-    lines.append("")
+    return df
 
-    # Save
-    with open(args.out, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
 
-    print(f"✅ Wrote audit → {args.out}")
+def _count_drift_flags(df_drift: pd.DataFrame) -> Tuple[int, int]:
+    """
+    Return (psi_flags, n_rows) where psi_flags is the number of drifted rows/entries.
+    If a boolean 'drift_flag' exists, we use its truthiness; otherwise, fall back to PSI>=PSI_ALERT.
+    We also look for common column names: 'psi' / 'population_stability_index'.
+    """
+    if df_drift.empty:
+        return 0, 0
+
+    # Resolve candidate columns
+    lower = {c.lower(): c for c in df_drift.columns}
+    flag_col = lower.get("drift_flag")
+    psi_col = lower.get("psi") or lower.get("population_stability_index")
+
+    n_rows = int(df_drift.shape[0])
+
+    if flag_col is not None:
+        # Use truthiness (no E712)
+        # Coerce to bool where possible; non-bool truthy values counted as True.
+        series = df_drift[flag_col]
+        try:
+            series_bool = series.astype(bool)
+        except Exception:
+            series_bool = series.apply(bool)
+        psi_flags = int(series_bool.sum())
+        return psi_flags, n_rows
+
+    if psi_col is not None:
+        # Count rows meeting/exceeding PSI threshold.
+        try:
+            psi_flags = int(
+                (
+                    pd.to_numeric(df_drift[psi_col], errors="coerce").fillna(0.0)
+                    >= PSI_ALERT
+                ).sum()
+            )
+        except Exception:
+            psi_flags = 0
+        return psi_flags, n_rows
+
+    # If neither column is present, we can’t infer flags.
+    return 0, n_rows
+
+
+def _max_ks(df_drift: pd.DataFrame) -> Optional[float]:
+    """
+    Return the maximum KS statistic if present. Common column names: 'ks', 'kolmogorov_smirnov'.
+    """
+    if df_drift.empty:
+        return None
+    lower = {c.lower(): c for c in df_drift.columns}
+    ks_col = lower.get("ks") or lower.get("kolmogorov_smirnov")
+    if ks_col is None:
+        return None
+    try:
+        return float(pd.to_numeric(df_drift[ks_col], errors="coerce").max())
+    except Exception:
+        return None
+
+
+def _load_policy_gate(reports: Path) -> Dict[str, Any]:
+    """Load policy gate result if available."""
+    return _safe_read_json(reports / "policy_gate_result.json")
+
+
+def _load_shap_top(reports: Path, limit: int = 10) -> List[Dict[str, Any]]:
+    """
+    Load SHAP top features summary. Accepts either:
+      {"features": [{"name": "...", "mean_abs_shap": 0.12}, ...]}
+    or a bare list. Sorts by the first present of:
+      mean_abs_shap, mean_abs_impact, importance (desc).
+    """
+    raw = _safe_read_json(reports / "shap_top_features.json")
+    feats = raw.get("features", raw if isinstance(raw, list) else [])
+    if not isinstance(feats, list):
+        return []
+
+    def score(rec: Dict[str, Any]) -> float:
+        for k in ("mean_abs_shap", "mean_abs_impact", "importance"):
+            v = rec.get(k)
+            try:
+                return float(v)
+            except Exception:
+                continue
+        return 0.0
+
+    try:
+        feats = sorted(feats, key=score, reverse=True)
+    except Exception:
+        pass
+
+    return feats[:limit]
+
+
+def make_trustworthy_audit(
+    reports_dir: str = "reports", out_path: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Build a compact 'trustworthy audit' payload from existing artifacts in `reports/`.
+
+    - drift:  uses JSON/CSV candidates to count drift flags and compute max KS
+    - policy: reads policy_gate_result.json
+    - shap:   reads shap_top_features.json (top features by |SHAP|)
+
+    Writes JSON to `reports/trustworthy_audit.json` (or to `out_path` if provided).
+    Returns the payload as a dict.
+    """
+    reports = Path(reports_dir)
+    reports.mkdir(parents=True, exist_ok=True)
+
+    df_drift = _load_drift_frame(reports)
+    psi_flags, n_rows = _count_drift_flags(df_drift)
+    ks_peak = _max_ks(df_drift)
+
+    policy = _load_policy_gate(reports)
+    shap_top = _load_shap_top(reports, limit=10)
+
+    payload: Dict[str, Any] = {
+        "summary": {
+            "entries_evaluated": n_rows,
+            "drift_flags": psi_flags,
+            "max_ks": ks_peak,
+            "policy_status": policy.get("status"),
+        },
+        "policy": {
+            "status": policy.get("status"),
+            "thresholds": policy.get("policy"),
+            "reasons": policy.get("reasons", []),
+        },
+        "explainability": {
+            "top_features": shap_top,
+        },
+        "sources": [
+            "policy_gate_result.json",
+            "shap_top_features.json",
+            # drift sources vary; list the most likely
+            "drift_history.json or small_drift_report.(json|csv)",
+        ],
+        "meta": {
+            "psi_alert_threshold": PSI_ALERT,
+            "version": "1.0",
+        },
+    }
+
+    # Determine output file
+    out_file = Path(out_path) if out_path else (reports / "trustworthy_audit.json")
+    out_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return payload
+
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Build a trustworthy audit JSON from reports/ artifacts."
+    )
+    parser.add_argument(
+        "--reports", default="reports", help="Reports directory (default: reports)"
+    )
+    parser.add_argument(
+        "--out",
+        default=None,
+        help="Output JSON path (default: reports/trustworthy_audit.json)",
+    )
+    args = parser.parse_args()
+
+    result = make_trustworthy_audit(reports_dir=args.reports, out_path=args.out)
+    print(json.dumps(result, indent=2))

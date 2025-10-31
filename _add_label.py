@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def add_label(path):
     df = pd.read_csv(path)
     if "label" not in df.columns:
@@ -10,5 +11,6 @@ def add_label(path):
     else:
         print(f"{path} already has label")
 
-for p in ["data/data_prepared_current.csv","data/data_prepared_baseline.csv"]:
+
+for p in ["data/data_prepared_current.csv", "data/data_prepared_baseline.csv"]:
     add_label(p)

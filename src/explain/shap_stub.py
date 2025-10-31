@@ -3,18 +3,20 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any
 
+
 def _default_features() -> List[Dict[str, Any]]:
     # Deterministic placeholder list for CI/demo
     # You can swap this with a parser over your model metadata later.
     base = [
-        ("age",            0.28),
-        ("systolic_bp",    0.21),
-        ("creatinine",     0.17),
-        ("heart_rate",     0.14),
-        ("bmi",            0.11),
-        ("o2_saturation",  0.09),
+        ("age", 0.28),
+        ("systolic_bp", 0.21),
+        ("creatinine", 0.17),
+        ("heart_rate", 0.14),
+        ("bmi", 0.11),
+        ("o2_saturation", 0.09),
     ]
     return [{"name": k, "mean_abs_impact": float(v)} for k, v in base]
+
 
 def main(out_dir: str = "reports") -> str:
     out = Path(out_dir)
@@ -27,6 +29,6 @@ def main(out_dir: str = "reports") -> str:
     target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return str(target)
 
+
 if __name__ == "__main__":
     print(main())
-

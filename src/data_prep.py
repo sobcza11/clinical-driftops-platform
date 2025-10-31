@@ -30,7 +30,15 @@ OUTPUTS = {
     "manifest": REPORTS_DIR / "data_prep_meta.json",
 }
 
-ID_TIME_COLS = {"subject_id", "hadm_id", "admittime", "charttime", "itemid", "label"}  # preserved, not scaled
+ID_TIME_COLS = {
+    "subject_id",
+    "hadm_id",
+    "admittime",
+    "charttime",
+    "itemid",
+    "label",
+}  # preserved, not scaled
+
 
 # ---------- Helpers ----------
 def sha256(path: Path) -> str:
@@ -40,9 +48,11 @@ def sha256(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+
 def ensure_dirs():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def load_csv(path: Path) -> pd.DataFrame:
     # Parse timestamps if present in header
@@ -51,13 +61,21 @@ def load_csv(path: Path) -> pd.DataFrame:
     parse_cols = [c for c in ["admittime", "charttime"] if c in header]
     return pd.read_csv(path, parse_dates=parse_cols, low_memory=False)
 
+
 def split_cols(df: pd.DataFrame) -> Tuple[List[str], List[str]]:
     cols = list(df.columns)
     id_time = [c for c in cols if c in ID_TIME_COLS]
-    num = [c for c in cols if c not in ID_TIME_COLS and pd.api.types.is_numeric_dtype(df[c])]
+    num = [
+        c
+        for c in cols
+        if c not in ID_TIME_COLS and pd.api.types.is_numeric_dtype(df[c])
+    ]
     return id_time, num
 
-def clip_outliers(df: pd.DataFrame, cols: List[str], method: str, z_thr: float, iqr_mult: float) -> pd.DataFrame:
+
+def clip_outliers(
+    df: pd.DataFrame, cols: List[str], method: str, z_thr: float, iqr_mult: float
+) -> pd.DataFrame:
     if method == "none" or not cols:
         return df
     df = df.copy()
@@ -80,6 +98,7 @@ def clip_outliers(df: pd.DataFrame, cols: List[str], method: str, z_thr: float, 
         raise ValueError(f"Unknown outlier method: {method}")
     return df
 
+
 def fit_scaler(scaler_name: str, X: np.ndarray):
     if scaler_name == "standard":
         scaler = StandardScaler()
@@ -92,8 +111,10 @@ def fit_scaler(scaler_name: str, X: np.ndarray):
     scaler.fit(X)
     return scaler
 
+
 def apply_scaler(scaler, X: np.ndarray):
     return X if scaler is None else scaler.transform(X)
+
 
 def df_stats(df: pd.DataFrame, cols: List[str]) -> Dict[str, Dict[str, float]]:
     stats = {}
@@ -110,14 +131,16 @@ def df_stats(df: pd.DataFrame, cols: List[str]) -> Dict[str, Dict[str, float]]:
         }
     return stats
 
+
 @dataclass
 class PrepConfig:
-    scaler: str = "standard"         # standard | minmax | none
-    outliers: str = "zscore"         # zscore | iqr | none
-    z_threshold: float = 4.0         # for zscore
-    iqr_mult: float = 1.5            # for iqr
-    impute: str = "drop"             # drop | zero | median
+    scaler: str = "standard"  # standard | minmax | none
+    outliers: str = "zscore"  # zscore | iqr | none
+    z_threshold: float = 4.0  # for zscore
+    iqr_mult: float = 1.5  # for iqr
+    impute: str = "drop"  # drop | zero | median
     random_seed: int = 42
+
 
 def impute_frame(df: pd.DataFrame, cols: List[str], strategy: str) -> pd.DataFrame:
     df = df.copy()
@@ -133,6 +156,7 @@ def impute_frame(df: pd.DataFrame, cols: List[str], strategy: str) -> pd.DataFra
         return df
     else:
         raise ValueError(f"Unknown impute strategy: {strategy}")
+
 
 # ---------- Main pipeline ----------
 def prepare(split_name: str, df: pd.DataFrame, cfg: PrepConfig, scaler=None):
@@ -155,10 +179,15 @@ def prepare(split_name: str, df: pd.DataFrame, cfg: PrepConfig, scaler=None):
     }
     return df2, scaler, stats
 
+
 def main():
     parser = argparse.ArgumentParser(description="Phase III Data Preparation")
-    parser.add_argument("--scaler", default="standard", choices=["standard", "minmax", "none"])
-    parser.add_argument("--outliers", default="zscore", choices=["zscore", "iqr", "none"])
+    parser.add_argument(
+        "--scaler", default="standard", choices=["standard", "minmax", "none"]
+    )
+    parser.add_argument(
+        "--outliers", default="zscore", choices=["zscore", "iqr", "none"]
+    )
     parser.add_argument("--z-threshold", type=float, default=4.0)
     parser.add_argument("--iqr-mult", type=float, default=1.5)
     parser.add_argument("--impute", default="drop", choices=["drop", "zero", "median"])
@@ -266,6 +295,7 @@ def main():
     print(f"  -> {OUTPUTS['current_out'].relative_to(REPO_ROOT)}")
     print(f"  -> {OUTPUTS['scaler_params'].relative_to(REPO_ROOT)}")
     print(f"  -> {OUTPUTS['manifest'].relative_to(REPO_ROOT)}")
+
 
 if __name__ == "__main__":
     main()

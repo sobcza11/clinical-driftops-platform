@@ -28,7 +28,9 @@ def start_run(context: str, nested: bool = True) -> Optional[str]:
 
     # If there's already an active run, optionally nest
     if mlflow.active_run() is None:
-        run = mlflow.start_run(run_name=f"{context} | {os.getenv('GITHUB_SHA','')[:7]}", nested=False)
+        run = mlflow.start_run(
+            run_name=f"{context} | {os.getenv('GITHUB_SHA','')[:7]}", nested=False
+        )
     else:
         run = mlflow.start_run(run_name=context, nested=nested)
 

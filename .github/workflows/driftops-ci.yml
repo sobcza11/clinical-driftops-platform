@@ -1,20 +1,17 @@
 name: DriftOps CI
 on:
   push:
-    branches: [ main ]
   pull_request:
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    defaults:
+      run:
+        shell: bash
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -24,51 +21,41 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
-      - name: Ensure reports dir + seed preds
+      - name: Run tests
+        run: pytest -q -vv
+
+      - name: Build reports with validator (fail closed)
+        env:
+          PYTHONPATH: .
+          DRIFTOPS_ENABLE_EXTERNAL: "0"
         run: |
-          mkdir -p reports
-          cat > reports/predictions.csv << 'CSV'
+          rm -rf reports && mkdir -p reports
+          cat > reports/predictions.csv <<'CSV'
           y_true,y_pred_prob
           1,0.91
           0,0.12
           1,0.77
           0,0.05
           CSV
-
-      - name: Run validator
-        env:
-          PYTHONPATH: .
-          DRIFTOPS_ENABLE_EXTERNAL: "0"
-        run: |
           python src/api/validate_cli.py --preds reports/predictions.csv
-
-      - name: Build dashboard
-        env:
-          PYTHONPATH: .
-        run: |
           python src/reports_dashboard.py
 
-      - name: Run tests
-        env:
-          PYTHONPATH: .
-        run: |
-          pytest -q --basetemp ".pytest_tmp" -vv
-
       - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: driftops-reports
-          path: |
-            reports/live_validation.json
-            reports/policy_gate_result.json
-            reports/performance_metrics.json
-            reports/fairness_summary.json
-            reports/policy_registry_summary.json
-            reports/evidence_digest.json
-            reports/drift_history.json
-            reports/regulatory_monitor.json
-            reports/run_metadata.json
-            reports/shap_top_features.json
-            reports/index.html
-          if-no-files-found: warn
+          path: reports/
 
+      - name: Build trustworthy audit
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m src.eval.make_trustworthy_audit --reports reports
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: driftops-reports
+          path: reports/

@@ -11,7 +11,9 @@ def _psi(expected: np.ndarray, actual: np.ndarray, bins: int = 10) -> float:
     actual = actual[np.isfinite(actual)]
     if len(expected) == 0 or len(actual) == 0:
         return 0.0
-    cuts = np.linspace(np.nanpercentile(expected, 1), np.nanpercentile(expected, 99), bins + 1)
+    cuts = np.linspace(
+        np.nanpercentile(expected, 1), np.nanpercentile(expected, 99), bins + 1
+    )
     e_hist, _ = np.histogram(expected, bins=cuts)
     a_hist, _ = np.histogram(actual, bins=cuts)
     e_ratio = np.clip(e_hist / max(e_hist.sum(), 1), 1e-6, 1)
@@ -22,10 +24,16 @@ def _psi(expected: np.ndarray, actual: np.ndarray, bins: int = 10) -> float:
 
 class DriftSummary:
     def __init__(self, rows: List[Dict[str, float]]):
-        self.as_dataframe = pd.DataFrame(rows, columns=["feature", "psi", "ks", "drift_flag"])
+        self.as_dataframe = pd.DataFrame(
+            rows, columns=["feature", "psi", "ks", "drift_flag"]
+        )
         if not self.as_dataframe.empty:
-            self.as_dataframe["psi"] = pd.to_numeric(self.as_dataframe["psi"], errors="coerce")
-            self.as_dataframe["ks"] = pd.to_numeric(self.as_dataframe["ks"], errors="coerce")
+            self.as_dataframe["psi"] = pd.to_numeric(
+                self.as_dataframe["psi"], errors="coerce"
+            )
+            self.as_dataframe["ks"] = pd.to_numeric(
+                self.as_dataframe["ks"], errors="coerce"
+            )
             # Force Python bool in an object-typed column to satisfy `is True`
             self.as_dataframe["drift_flag"] = (
                 self.as_dataframe["drift_flag"]
@@ -72,7 +80,9 @@ def compare_dataframes(
             continue
         if looks_like_id_or_time(c) or c.lower() in ign:
             continue
-        if pd.api.types.is_numeric_dtype(baseline[c]) and pd.api.types.is_numeric_dtype(current[c]):
+        if pd.api.types.is_numeric_dtype(baseline[c]) and pd.api.types.is_numeric_dtype(
+            current[c]
+        ):
             cols.append(c)
 
     rows: List[Dict[str, float]] = []
@@ -91,12 +101,13 @@ def compare_dataframes(
 
         drift_flag = (psi >= 0.10) or (ks >= 0.10)  # heuristic for tests
 
-        rows.append({
-            "feature": c,
-            "psi": float(psi) if np.isfinite(psi) else np.nan,
-            "ks": float(ks) if np.isfinite(ks) else np.nan,
-            "drift_flag": True if drift_flag else False,  # Python bools
-        })
+        rows.append(
+            {
+                "feature": c,
+                "psi": float(psi) if np.isfinite(psi) else np.nan,
+                "ks": float(ks) if np.isfinite(ks) else np.nan,
+                "drift_flag": True if drift_flag else False,  # Python bools
+            }
+        )
 
     return DriftSummary(rows)
-

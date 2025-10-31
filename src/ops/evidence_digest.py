@@ -4,10 +4,9 @@
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 import hashlib
 import json
-import os
 import time
 
 REPORTS = Path("reports")
@@ -35,6 +34,7 @@ REPORT_FILES = [
     "driftops_bundle.zip",
 ]
 
+
 def _sha256_file(path: Path, chunk_size: int = 1 << 20) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -45,6 +45,7 @@ def _sha256_file(path: Path, chunk_size: int = 1 << 20) -> str:
             h.update(b)
     return h.hexdigest()
 
+
 def _file_info(path: Path) -> Dict[str, Any]:
     try:
         stat = path.stat()
@@ -52,11 +53,14 @@ def _file_info(path: Path) -> Dict[str, Any]:
             "exists": True,
             "size_bytes": stat.st_size,
             "mtime_epoch": int(stat.st_mtime),
-            "mtime_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(stat.st_mtime)),
+            "mtime_iso": time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ", time.gmtime(stat.st_mtime)
+            ),
             "sha256": _sha256_file(path),
         }
     except FileNotFoundError:
         return {"exists": False}
+
 
 def main(out_dir: str = "reports") -> str:
     out = Path(out_dir)
@@ -80,6 +84,7 @@ def main(out_dir: str = "reports") -> str:
     target = out / "evidence_digest.json"
     target.write_text(json.dumps(evidence, indent=2), encoding="utf-8")
     return str(target)
+
 
 if __name__ == "__main__":
     print(main())

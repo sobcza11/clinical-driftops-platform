@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Dict, Any, List
 import json
 import os
 from datetime import datetime, timezone
@@ -13,14 +12,17 @@ REPORTS = Path("reports")
 HISTORY_FILE = REPORTS / "drift_history.json"
 MAX_RECORDS = 200  # rolling window
 
+
 def _read_json(path: Path):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return [] if path == HISTORY_FILE else {}
 
+
 def _iso_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 def main(out_dir: str = "reports") -> str:
     out = Path(out_dir)
@@ -58,6 +60,6 @@ def main(out_dir: str = "reports") -> str:
     HISTORY_FILE.write_text(json.dumps(history, indent=2), encoding="utf-8")
     return str(HISTORY_FILE)
 
+
 if __name__ == "__main__":
     print(main())
-

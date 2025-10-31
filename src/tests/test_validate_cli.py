@@ -1,7 +1,12 @@
-import json, pathlib, subprocess, sys, os
+import json
+import pathlib
+import subprocess
+import sys
+import os
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PY = sys.executable
+
 
 def test_validate_cli_end_to_end(tmp_path):
     reports = tmp_path / "reports"
@@ -14,8 +19,12 @@ def test_validate_cli_end_to_end(tmp_path):
     # force stable path (no external argparse modules)
     env["DRIFTOPS_ENABLE_EXTERNAL"] = "0"
 
-    cmd = [PY, str(ROOT / "src" / "api" / "validate_cli.py"),
-           "--preds", str(reports / "predictions.csv")]
+    cmd = [
+        PY,
+        str(ROOT / "src" / "api" / "validate_cli.py"),
+        "--preds",
+        str(reports / "predictions.csv"),
+    ]
     subprocess.check_call(cmd, cwd=ROOT, env=env)
 
     lv = json.loads((reports / "live_validation.json").read_text(encoding="utf-8"))

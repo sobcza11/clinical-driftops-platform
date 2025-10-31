@@ -10,6 +10,7 @@ from typing import Any, Dict, List
 
 REPORTS = Path("reports")
 
+
 def _maybe_mlruns() -> List[Dict[str, Any]]:
     base = Path("mlruns")
     results: List[Dict[str, Any]] = []
@@ -21,22 +22,27 @@ def _maybe_mlruns() -> List[Dict[str, Any]]:
         try:
             rel = meta.parent.relative_to(Path("."))
             # Keep path & a short name
-            results.append({
-                "name": rel.name,
-                "path": str(rel).replace("\\", "/"),
-            })
+            results.append(
+                {
+                    "name": rel.name,
+                    "path": str(rel).replace("\\", "/"),
+                }
+            )
         except Exception:
             continue
     # Limit to a handful for readability
     return results[:5]
 
+
 def main(out_dir: str = "reports") -> str:
     REPORTS.mkdir(parents=True, exist_ok=True)
 
     server = os.getenv("GITHUB_SERVER_URL", "https://github.com")
-    repo   = os.getenv("GITHUB_REPOSITORY", "")
+    repo = os.getenv("GITHUB_REPOSITORY", "")
     run_id = os.getenv("GITHUB_RUN_ID", "")
-    actions_run_url = f"{server}/{repo}/actions/runs/{run_id}" if repo and run_id else ""
+    actions_run_url = (
+        f"{server}/{repo}/actions/runs/{run_id}" if repo and run_id else ""
+    )
 
     # Pages URL (static for user repo)
     user_repo = repo.split("/") if repo else []
@@ -52,13 +58,14 @@ def main(out_dir: str = "reports") -> str:
         },
         "mlflow": {
             "runs": _maybe_mlruns(),
-            "note": "If using MLflow tracking, link a public UI; paths listed when mlruns/** exists."
-        }
+            "note": "If using MLflow tracking, link a public UI; paths listed when mlruns/** exists.",
+        },
     }
 
     target = Path(out_dir) / "run_metadata.json"
     target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return str(target)
+
 
 if __name__ == "__main__":
     print(main())

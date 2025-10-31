@@ -12,6 +12,7 @@ import json
 
 REPORTS = Path("reports")
 
+
 def _safe_load_yaml(path: Path) -> Dict[str, Any]:
     """Load YAML if possible; otherwise return {}. Missing file -> {}."""
     if not path.exists():
@@ -26,6 +27,7 @@ def _safe_load_yaml(path: Path) -> Dict[str, Any]:
         return data if isinstance(data, dict) else {}
     except Exception:
         return {}
+
 
 def main(out_dir: str = "reports") -> str:
     out = Path(out_dir)
@@ -42,14 +44,16 @@ def main(out_dir: str = "reports") -> str:
 
     policies: List[Dict[str, Any]] = []
     if isinstance(registry, dict):
-        for item in (registry.get("policies") or []):
+        for item in registry.get("policies") or []:
             if isinstance(item, dict):
-                policies.append({
-                    "id": item.get("id"),
-                    "description": item.get("description"),
-                    "thresholds": item.get("thresholds"),
-                    "applies_to": item.get("applies_to"),
-                })
+                policies.append(
+                    {
+                        "id": item.get("id"),
+                        "description": item.get("description"),
+                        "thresholds": item.get("thresholds"),
+                        "applies_to": item.get("applies_to"),
+                    }
+                )
 
     summary = {
         "policy_yaml_present": policy_path.exists(),
@@ -65,17 +69,15 @@ def main(out_dir: str = "reports") -> str:
         },
         "registry": {
             "policies": policies,
-            "note": "Add entries to policy_registry.yaml to map contexts to policies."
+            "note": "Add entries to policy_registry.yaml to map contexts to policies.",
         },
-        "generator": {
-            "module": "src.ops.policy_registry_view",
-            "version": "1.0.0"
-        }
+        "generator": {"module": "src.ops.policy_registry_view", "version": "1.0.0"},
     }
 
     target = out / "policy_registry_summary.json"
     target.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return str(target)
+
 
 if __name__ == "__main__":
     print(main())

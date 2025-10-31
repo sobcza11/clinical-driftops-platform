@@ -1,3 +1,4 @@
+[![DriftOps CI](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg)](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml)
 # 🩺 Clinical DriftOps Platform • Honest AI for Healthcare
 ![alt text](https://github.com/sobcza11/clinical-driftops-platform/blob/main/assets/driftOps_pic_h.png)
 
@@ -18,7 +19,7 @@
 
 ---
 
-**Live Dashboard:** https://sobcza11.github.io/clinical-driftops-platform/  
+**Live Dashboard:** https://sobcza11.github.io/clinical-driftops-platform/
 **Status:** [![DriftOps CI](https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg)](https://github.com/sobcza11/clinical-driftops-platform/actions)
 
 Governance-first MLOps framework ensuring transparent, auditable, and
@@ -29,8 +30,8 @@ policy-as-code validation for clinical AI models.
 ---
 
 ## 🌍 Overview
-**Clinical DriftOps Platform** is an end-to-end **MLOps framework** for *trustworthy, explainable, and continuously validated clinical AI*.  
-It monitors **data drift**, **fairness**, and **model explainability**, automatically enforcing governance policies via CI/CD.  
+**Clinical DriftOps Platform** is an end-to-end **MLOps framework** for *trustworthy, explainable, and continuously validated clinical AI*.
+It monitors **data drift**, **fairness**, and **model explainability**, automatically enforcing governance policies via CI/CD.
 Built for clinical research using the **MIMIC-IV** dataset, aligned to **PMI-CPMAI Phases I–VI**.
 
 ---

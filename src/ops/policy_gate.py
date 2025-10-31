@@ -22,7 +22,9 @@ def _load_thresholds() -> Dict[str, float]:
     return dict(DEFAULTS)
 
 
-def evaluate(min_auroc: float, min_ks: float, perf: Dict[str, Any]) -> tuple[str, list[str], Optional[float]]:
+def evaluate(
+    min_auroc: float, min_ks: float, perf: Dict[str, Any]
+) -> tuple[str, list[str], Optional[float]]:
     auroc = perf.get("auroc")
     ks = perf.get("ks_stat")
 
@@ -54,11 +56,16 @@ def run(reports: Path = REPORTS) -> Dict[str, Any]:
 
     payload: Dict[str, Any] = {
         "status": status,
-        "policy": {"min_auroc": thresholds["min_auroc"], "min_ks": thresholds["min_ks"]},
+        "policy": {
+            "min_auroc": thresholds["min_auroc"],
+            "min_ks": thresholds["min_ks"],
+        },
         "reasons": reasons,
         "observed": {"max_psi": None, "max_ks": ks_val},
     }
-    (reports / "policy_gate_result.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (reports / "policy_gate_result.json").write_text(
+        json.dumps(payload, indent=2), encoding="utf-8"
+    )
     return payload
 
 
@@ -73,8 +80,3 @@ def main() -> int:
 
 def entrypoint() -> int:
     return main()
-
-
-
-
-

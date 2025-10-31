@@ -16,24 +16,27 @@ from typing import Any, Dict
 
 REPORTS = Path("reports")
 
+
 def _read_json(p: Path) -> Dict[str, Any]:
     try:
         return json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return {}
 
+
 def _exists(p: Path) -> bool:
     return p.exists() and p.is_file()
+
 
 def main(out_dir: str = "reports") -> str:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    perf  = _read_json(out / "performance_metrics.json")
-    fair  = _read_json(out / "fairness_summary.json")
-    shap  = _read_json(out / "shap_top_features.json")
-    gate  = _read_json(out / "policy_gate_result.json")
-    live  = _read_json(out / "live_validation.json")
+    perf = _read_json(out / "performance_metrics.json")
+    fair = _read_json(out / "fairness_summary.json")
+    shap = _read_json(out / "shap_top_features.json")
+    gate = _read_json(out / "policy_gate_result.json")
+    _live = _read_json(out / "live_validation.json")
 
     # Presence checks
     artifacts = {
@@ -67,7 +70,9 @@ def main(out_dir: str = "reports") -> str:
 
     # HIPAA PHI heuristic (we do NOT include PHI in public artifacts by design)
     hipaa_phi_in_artifacts = False
-    hipaa_note = "No PHI fields detected in public artifacts by design; raw data not exposed."
+    hipaa_note = (
+        "No PHI fields detected in public artifacts by design; raw data not exposed."
+    )
 
     payload = {
         "regulatory_monitor": {
@@ -81,7 +86,7 @@ def main(out_dir: str = "reports") -> str:
             "risk_level": risk_level,
             "notes": [
                 hipaa_note,
-                "This is a heuristic stabilization signal, not a legal opinion."
+                "This is a heuristic stabilization signal, not a legal opinion.",
             ],
         }
     }
@@ -90,6 +95,6 @@ def main(out_dir: str = "reports") -> str:
     target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return str(target)
 
+
 if __name__ == "__main__":
     print(main())
-

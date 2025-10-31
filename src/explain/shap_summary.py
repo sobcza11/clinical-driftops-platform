@@ -1,69 +1,64 @@
 """
-Generate SHAP summary plot for top features.
-Usage:
-    python -m src.explain.shap_summary --data data/data_prepared_current.csv --out reports/shap_top_features.png --topk 15
+Lightweight SHAP summary helper (defensive; OK if SHAP is not available).
+This module only provides an optional utility and is not required by tests.
 """
 
-import argparse
-import pandas as pd
-import shap
-import matplotlib
-matplotlib.use("Agg")  # important for GitHub Actions headless environment
-import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+from __future__ import annotations
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data", required=True, help="Path to prepared CSV")
-    parser.add_argument("--out", required=True, help="Output path for SHAP summary plot")
-    parser.add_argument("--topk", type=int, default=15, help="Top K features to show")
-    args = parser.parse_args()
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-    df = pd.read_csv(args.data)
-    if "label" not in df.columns:
-        print("⚠️ No 'label' column – writing a stub plot.")
-        plt.figure(figsize=(6, 2))
-        plt.text(0.5, 0.5, "No label column found", ha="center", va="center")
-        plt.axis("off")
-        plt.savefig(args.out, bbox_inches="tight")
-        # MLflow: still log artifact for observability
-        _log_mlflow(top_n=args.topk, artifact_path=args.out, stub=True)
-        return
 
-    # separate features/target
-    y = df["label"]
-    X = df.drop(columns=["label"])
+@dataclass
+class ShapTopFeature:
+    name: str
+    mean_abs_impact: float
 
-    # encode non-numeric columns
-    for col in X.select_dtypes(include="object").columns:
-        X[col] = LabelEncoder().fit_transform(X[col].astype(str))
 
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X, y)
+@dataclass
+class ShapSummary:
+    features: List[Dict[str, Any]]
 
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X)[1] if len(set(y)) > 1 else explainer.shap_values(X)
 
-    shap.summary_plot(
-        shap_values, X, plot_type="bar", max_display=args.topk, show=False
-    )
-    plt.tight_layout()
-    plt.savefig(args.out, bbox_inches="tight")
-    print(f"✅ saved SHAP summary → {args.out}")
-
-    _log_mlflow(top_n=args.topk, artifact_path=args.out, stub=False, model_params={"n_estimators": 100})
-
-def _log_mlflow(top_n: int, artifact_path: str, stub: bool, model_params: dict = None):
-    """Log SHAP artifact & params to MLflow (best-effort)."""
+def compute_top_features(
+    shap_values: Optional[Any],
+    feature_names: Optional[List[str]],
+    topk: int = 10,
+) -> ShapSummary:
+    """Return an empty summary if inputs are missing; avoids hard deps on shap/numpy."""
     try:
-        from src.ops.mlflow_tracking import start_run, log_params, log_artifact
-        tags = {"phase": "VI", "component": "explainability", "stub_plot": str(stub)}
-        with start_run(run_name="shap-summary", tags=tags):
-            log_params({"top_n": top_n, **(model_params or {})})
-            log_artifact(artifact_path)
-    except Exception as e:
-        print(f"[mlflow] skipping logging ({e})")
+        import numpy as np  # import inside function is intentional
+    except Exception:
+        return ShapSummary(features=[])
 
-if __name__ == "__main__":
-    main()
+    if shap_values is None or not feature_names:
+        return ShapSummary(features=[])
+
+    try:
+        # Normalize list-like to array
+        if isinstance(shap_values, list):
+            sv = shap_values[0]
+        else:
+            sv = shap_values
+
+        sv = np.asarray(sv)
+        if sv.ndim == 1:
+            sv = sv.reshape(-1, 1)
+
+        mean_abs = np.mean(np.abs(sv), axis=0)  # (n_features,)
+        order = np.argsort(mean_abs)[::-1][: max(1, int(topk))]
+
+        feats: List[Dict[str, Any]] = []
+        for idx in order:
+            i = int(idx)
+            if 0 <= i < len(feature_names):
+                feats.append(
+                    {
+                        "name": feature_names[i],
+                        "mean_abs_impact": float(mean_abs[i]),
+                    }
+                )
+
+        return ShapSummary(features=feats)
+    except Exception:
+        return ShapSummary(features=[])
