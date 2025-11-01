@@ -1,6 +1,6 @@
 ﻿# src/reports_dashboard.py
 # Purpose: Build a static HTML dashboard from artifacts in reports/.
-# Note: Tests only require the title and a "Policy Gate" section, but we render more if present.
+# Tests only require the title and a "Policy Gate" section; we render more if present.
 
 from __future__ import annotations
 
@@ -14,13 +14,12 @@ REPORTS = Path("reports")
 # ------------------------------- helpers -------------------------------------
 
 
-def _read_json(path: Path) -> Dict[str, Any] | List[Dict[str, Any]] | Dict[str, Any]:
+def _read_json(path: Path) -> dict | list:
+    """Best-effort JSON reader: returns {} on failure (or [] if file clearly list-like)."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        # Return {} for objects and [] for lists if clearly expected, else {}
-        if path.name.endswith(".json"):
-            return {}
+        # Default to {} to keep call-sites simple and robust.
         return {}
 
 
@@ -47,7 +46,7 @@ def _policy_table(gate: Dict[str, Any], perf: Dict[str, Any]) -> str:
 
     rows: List[str] = []
 
-    def row(name: str, actual, threshold, higher_is_better=True):
+    def row(name: str, actual, threshold, higher_is_better: bool = True) -> None:
         try:
             a = float(actual) if actual is not None else None
             t = float(threshold) if threshold is not None else None
@@ -110,8 +109,7 @@ def _shap_section(shap: Dict[str, Any]) -> str:
 
 
 def _fairness_section(fair: Dict[str, Any]) -> str:
-    # Accept either {"slices":[...], "metrics":{slice:{metric:value}}}
-    # or {"overall": {...}} (tests write overall DPR but don't require rendering)
+    # Accept {"slices":[...], "metrics":{slice:{metric:value}}}
     slices = fair.get("slices", [])
     metrics_by_slice: Dict[str, Any] = fair.get("metrics", {})
 
@@ -386,12 +384,13 @@ def _drift_history_section(history) -> str:
 
 
 def _trustworthy_audit_section(audit: Dict[str, Any]) -> str:
-    if not audit:
+    """Render the Trustworthy Audit block produced by src/eval/make_trustworthy_audit.py."""
+    if not isinstance(audit, dict) or not audit:
         return ""
     blocks: List[str] = ["<section><h2>Trustworthy Audit</h2>"]
 
     summary = audit.get("summary", {})
-    if summary:
+    if isinstance(summary, dict) and summary:
         blocks.append("<ul>")
         blocks.append(
             f"<li>Entries evaluated: {summary.get('entries_evaluated', 0)}</li>"
@@ -402,7 +401,7 @@ def _trustworthy_audit_section(audit: Dict[str, Any]) -> str:
         blocks.append("</ul>")
 
     top_feats = audit.get("explainability", {}).get("top_features", [])
-    if top_feats:
+    if isinstance(top_feats, list) and top_feats:
         cols = sorted({k for r in top_feats for k in r})
         thead = "<tr>" + "".join(f"<th>{c}</th>" for c in cols) + "</tr>"
         rows = [

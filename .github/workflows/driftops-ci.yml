@@ -59,3 +59,34 @@ jobs:
         with:
           name: driftops-reports
           path: reports/
+
+
+      - name: Policy Gate
+        run: |
+          python -m src.ops.policy_validator
+
+      - name: Trustworthy Audit
+        run: |
+          python -m src.eval.make_trustworthy_audit --reports reports
+
+      - name: Build Dashboard
+        run: |
+          python src/reports_dashboard.py
+
+
+
+      - name: Validate policy gate
+        run: python src/ops/policy_validator.py
+
+      - name: Make Trustworthy Audit
+        run: python src/eval/make_trustworthy_audit.py
+
+      - name: Build dashboard
+        run: python src/reports_dashboard.py
+
+      # (Optional) Upload the reports folder as an artifact so you can download it from Actions
+      - name: Upload reports artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: driftops-reports
+          path: reports/
