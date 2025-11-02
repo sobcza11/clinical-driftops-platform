@@ -14,7 +14,7 @@
 </p>
 ---
 
-**Live Dashboard:** https://sobcza11.github.io/clinical-driftops-platform/
+**Live Dashboard:** <a href="https://sobcza11.github.io/clinical-driftops-platform/" target="_blank">https://sobcza11.github.io/clinical-driftops-platform/</a>
 
 Governance-first MLOps framework ensuring transparent, auditable, and policy-as-code validation for clinical AI models.
 
