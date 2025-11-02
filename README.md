@@ -1,4 +1,4 @@
-# Clinical DriftOps Platform ? Honest AI for Healthcare
+# Clinical DriftOps Platform • Honest AI for Healthcare
 ![Clinical DriftOps](https://github.com/sobcza11/clinical-driftops-platform/blob/main/assets/driftOps_pic_h.png)
 
 <p align="center">
@@ -18,14 +18,14 @@
 
 Governance-first MLOps framework ensuring transparent, auditable, and policy-as-code validation for clinical AI models.
 
-> **PMI-CPMAI Aligned ? MLOps ? Trustworthy AI ? Explainable Healthcare Models**
+> **PMI-CPMAI Aligned • MLOps • Trustworthy AI • Explainable Healthcare Models**
 
 ---
 
 ## Overview
 **Clinical DriftOps Platform** is an end-to-end **MLOps framework** for *trustworthy, explainable, and continuously validated clinical AI*.
 It monitors **data drift**, **fairness**, and **model explainability**, automatically enforcing governance policies via CI/CD.
-Built for clinical research using the **MIMIC-IV** dataset, aligned to **PMI-CPMAI Phases I?VI**.
+Built for clinical research using the **MIMIC-IV** dataset, aligned to **PMI-CPMAI Phases I-VI**.
 
 ---
 
@@ -43,13 +43,13 @@ Built for clinical research using the **MIMIC-IV** dataset, aligned to **PMI-CPM
 ---
 
 ## Key Features
-- 1 **Automated Performance Audits** ? AUROC, accuracy@0.5, KS via `performance_metrics.py`.
-- 2 **Data Drift Monitoring** ? PSI / KS tests; thresholds in `policy.yaml`.
-- 3 **Fairness Audits** ? per-group positive-rate & parity gap (`fairness_audit.py`).
-- 4 **Explainability via SHAP** ? top features & artifact presence checks.
-- 5 **Policy Gate Enforcement** ? single source of truth for model acceptance criteria.
-- 6 **CI/CD** ? GitHub Actions runs the pipeline and publishes a live dashboard.
-- 7 **MLflow Logging** ? metrics & artifact tracking (Phase VI expansion).
+- **Automated Performance Audits** - AUROC, accuracy@0.5, KS via `performance_metrics.py`.
+- **Data Drift Monitoring** - PSI / KS tests; thresholds in `policy.yaml`.
+- **Fairness Audits** - per-group positive-rate & parity gap (`fairness_audit.py`).
+- **Explainability via SHAP** - top features & artifact presence checks.
+- **Policy Gate Enforcement** - single source of truth for model acceptance criteria.
+- **CI/CD** - GitHub Actions runs the pipeline and publishes a live dashboard.
+- **MLflow Logging** - metrics & artifact tracking (Phase VI expansion).
 
 ---
 
