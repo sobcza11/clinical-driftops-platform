@@ -1,2 +1,6 @@
 * text=auto eol=lf
 *.ps1 text eol=crlf
+# .gitattributes
+
+*.md text eol=lf
+*.toml text eol=lf

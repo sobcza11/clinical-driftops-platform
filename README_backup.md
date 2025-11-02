@@ -1,4 +1,4 @@
-﻿# 🩺 Clinical DriftOps Platform • Honest AI for Healthcare
+# 🩺 Clinical DriftOps Platform • Honest AI for Healthcare
 ![Clinical DriftOps](https://github.com/sobcza11/clinical-driftops-platform/blob/main/assets/driftOps_pic_h.png)
 
 <p align="center">
@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/badge/Dashboard-Live-success?logo=github" alt="Open Dashboard">
   </a>
   <a href="https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml">
-    <img src="https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg?branch=main" alt="DriftOps CI">
+    <img src="https://github.com/sobcza11/clinical-driftops-platform/actions/workflows/driftops-ci.yml/badge.svg" alt="DriftOps CI">
   </a>
   <a href="./LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License MIT">

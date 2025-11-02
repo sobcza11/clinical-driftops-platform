@@ -19,3 +19,9 @@ reports/*
 # DriftOps: CI/validator artifacts (kept out of VCS)
 reports/*
 !reports/README.md
+
+# Optional: keep MLflow runs out of git
+mlruns/
+# OS/editor junk
+.DS_Store
+Thumbs.db

@@ -1,1 +1,1 @@
-﻿# (paste the script content above)
+# (paste the script content above)
